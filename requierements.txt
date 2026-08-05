@@ -1,0 +1,47 @@
+# Núcleo científico
+numpy
+scipy
+pandas
+matplotlib
+
+# Notebooks
+jupyter
+ipykernel
+
+# Física de altas energías (HEP)
+uproot
+awkward
+vector
+hist
+boost-histogram
+mplhep
+
+# Utilidades
+tqdm
+pyyaml
+
+# Ajustes y optimización
+iminuit
+
+# Álgebra simbólica
+sympy
+
+# Machine Learning (opcional, pero muy útil)
+scikit-learn
+
+# Visualización interactiva
+plotly
+
+# Formatos de archivo
+h5py
+
+# Estadística
+statsmodels
+
+# Testing
+pytest
+
+# Calidad de código
+black
+isort
+flake8
