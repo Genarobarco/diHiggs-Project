@@ -1,0 +1,10 @@
+Delphes: HL-LHC $\sqrt{s}$ = 14TeV
+MET > 0 GeV
+$p_T$ > 20 GeV
+$|\eta| < 2.5$
+
+Muestra              Eventos  Sel. 2t+2b   Acept.  tau-jets  Doble tag  % doble
+--------------------------------------------------------------------------------
+Señal                  10000         244    2.44%      6661        725   10.88%
+Fondo                  10000         204    2.04%      6646       1041   15.66%
+Modelo Estándar        10000         228    2.28%      6572        691   10.51%
