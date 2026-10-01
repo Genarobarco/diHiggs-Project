@@ -1,6 +1,8 @@
-Delphes: HL-LHC $\sqrt{s}$ = 14TeV
-MET > 0 GeV
-$p_T$ > 20 GeV
+Gen. Events: 100k
+ToF: -1
+Delphes: HL-LHC
+$\sqrt{s}$ = 14TeV
+$p_T$ > 0 GeV
 $|\eta| < 2.5$
 
 Muestra             Generados  Pasan MET  Acept. MET  Sel. 2t+2b   Acept.  Acept. tot.  Ev. doble tag  % doble
