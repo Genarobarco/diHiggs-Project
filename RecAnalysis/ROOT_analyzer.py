@@ -13,11 +13,14 @@ import Functions as f
 
 vec.register_awkward()
 
-common_path = "/home/usuario/Madgraph/projects/"
+# ============================================================================
+# Parameters
+# ============================================================================
 
-# Parámetros a definir
+common_path_of_data = "/home/usuario/Madgraph/projects/"
+saving_path = '/home/usuario/VSCode/diHiggs-Project/RecAnalysis'
 
-# -----------------------------------
+# MET Selection
 
 MET_LowerBond = 0     # GeV
 
@@ -34,20 +37,22 @@ Energy_label = "14TeV"
 Gen_events = "200k"
 process = "gg-hhj"
 
-# -----------------------------------
+# Paths
 
+rutas = {
+    "signal": common_path_of_data + "/output_ggHH_bbtata_BP1_*_delphes_events.root",
+}
 
+# ============================================================================
+# Data Loading
+# ============================================================================
 
-
+print('Loading Data...')
 
 data_to_analyse = f"{Delphes}_{Energy_label}_{Gen_events}_P{process}"
 
 extracted_keys = ["Jet.PT","Jet.Eta", "Jet.Phi", "Jet.Mass", "Jet.BTag","Jet.TauTag", "MissingET.MET",
             'Track.PT', 'Track.Eta', 'Track.Phi', 'Track.Mass', 'Track.PID', 'Track.DZ', 'Track.D0', 'Track.Charge']
-
-rutas = {
-    "signal": common_path + "/output_ggHH_bbtata_BP1_*_delphes_events.root",
-}
 
 def data_loader(rutas):
     return {key: up.concatenate(f"{path}:Delphes", extracted_keys)
@@ -55,25 +60,18 @@ def data_loader(rutas):
 
 all_data = data_loader(rutas)
 
-folder_path = f'/home/usuario/VSCode/diHiggs-Project/RecAnalysis/{data_to_analyse}'
+folder_path = f'{saving_path}/{data_to_analyse}'
 
 f.print_sample_info(Delphes, Energy_label, Gen_events, process, data_to_analyse)
 
-N_events_text = f.parse_events(Gen_events)
-
-def check_events(expected, data):
-    distintos = {k: len(v) for k, v in data.items() if len(v) != expected}
-    if distintos:
-        raise ValueError(f"Se esperaban {expected} eventos; difieren: {distintos}")
-    print(f'All datasets contain: {expected} events')
-
-N_events_text = f.parse_events(Gen_events)
-
-check_events(N_events_text, all_data)
-
 os.makedirs(folder_path, exist_ok=True)
 
-# Distribucion de MET, solo con corte de Cinemática
+
+# ============================================================================
+# MET Distribution
+# ============================================================================
+
+print('Plotting MET Distribution')
 
 MET_data = {key: all_data[key]["MissingET.MET"] for key in all_data}
 
@@ -102,6 +100,13 @@ plt.tight_layout()
 plt.savefig(f"{folder_path}/MET_distribution.png", dpi=300)
 plt.show()
 
+
+
+# ============================================================================
+# Jets & Tracks construction
+# ============================================================================
+
+print('Building Jets and Tracks')
 
 selected_data_folder_path_jets = f"{data_to_analyse}/Jets/MET{MET_LowerBond}_PT{Pre_PT_jet}_Eta{Pre_eta_jet}"
 selected_data_folder_path_tracks = f"{data_to_analyse}/Tracks/MET{MET_LowerBond}_PT{Pre_PT_track}_Eta{Pre_eta_track}"
@@ -137,6 +142,18 @@ def build_objects(data, MET_LowerBond, Pre_PT_jet, Pre_eta_jet, Pre_PT_track, Pr
 jets, tracks = build_objects(all_data, MET_LowerBond, Pre_PT_jet, Pre_eta_jet,
                              Pre_PT_track, Pre_eta_track)
 
+
+# ============================================================================
+# ===                                                                      ===
+# ===                         Track Analysis                               ===
+# ===                                                                      ===
+# ============================================================================
+
+print('Begin Track Analysis')
+
+# ============================================================================
+# Eta, Phi and PT
+# ============================================================================
 
 pt_data = {key: ak.to_numpy(ak.flatten(tracks[key].pt)) for key in tracks}
 eta_data = {key: ak.to_numpy(ak.flatten(tracks[key].eta)) for key in tracks}
@@ -191,6 +208,10 @@ plt.savefig(f"{selected_data_folder_path_tracks}/Tracks_distributions.png", dpi=
 plt.show()
 
 
+# ============================================================================
+# Vertex Parameters -- D0 and Dz
+# ============================================================================
+
 d0_data = {key: ak.to_numpy(ak.flatten(tracks[key].d0)) for key in tracks}
 dz_data = {key: ak.to_numpy(ak.flatten(tracks[key].dz)) for key in tracks}
 
@@ -231,7 +252,11 @@ plt.tight_layout()
 plt.savefig(f"{selected_data_folder_path_tracks}/Vertex_displacement.png", dpi=300)
 plt.show()
 
-# Numero de Tracks por evento
+
+
+# ============================================================================
+# Tracks per Event
+# ============================================================================
 
 ntrk_data = {key: ak.to_numpy(ak.num(tracks[key], axis=1)) for key in tracks}
 
@@ -256,6 +281,23 @@ plt.legend(loc = 'upper left')
 plt.tight_layout()
 plt.savefig(f"{selected_data_folder_path_tracks}/Number_of_Tracks.png", dpi=300)
 plt.show()
+
+
+print('Finished Track Analysis')
+
+# ============================================================================
+# ===                                                                      ===
+# ===                           JETS ANALYSIS                              ===
+# ===                                                                      ===
+# ============================================================================
+
+print('Begin Jet Analysis')
+
+# ============================================================================
+# Selection and Observables buildup
+# ============================================================================
+
+print('Selection of 2tau+2bjets events')
 
 def build_taus_and_bjets(jets_input):
     
@@ -288,13 +330,26 @@ def build_observables(sel):
     return obs
 
 
+print('Identifying Taus and Bjets')
+
 taus, bjets, NEvents, NTaus, NBjets = build_taus_and_bjets(jets)    # Selecciono los Taus y Bs de cada Dataset
+
+print('Selection of 2tau+2bjets events')
+
 Selection_dictionary = build_selected_pairs(taus, bjets)            # Recorto a eventos con al menos 2 Taus y 2 Bs, y los ordeno por Pt
+
+print('Calculating Observables')
+
 Observables = build_observables(Selection_dictionary)               # Calculo los observables de cada par de Taus y Bs seleccionados
 
 ncols = len(Observables)
 
-etiquetas = {"signal": "Señal", "standardmodel": "Modelo Estándar", "background": "Fondo"}
+
+# ============================================================================
+# Aceptancies
+# ============================================================================
+
+print('Calculating Aceptancies')
 
 def doubletag_events(j):
     dt = (j['TauTag'] == 1) & (j['BTag'] == 1)
@@ -327,6 +382,16 @@ texto = "\n".join(lineas)
 print(texto)
 _ = (Path(selected_data_folder_path_jets) / "cutflow.txt").write_text(texto + "\n")
 
+
+
+
+# ============================================================================
+# Taus and Bjets per event
+# ============================================================================
+
+
+print('Plotting Num of Taus and Bjets per event')
+
 lim_inf_Ntaus, lim_sup_Ntaus, p_debajo_Ntaus, p_dentro_Ntaus, p_encima_Ntaus = f.calculo_rangos(0, 10, list(NTaus.values()))
 lim_inf_Nbjets, lim_sup_Nbjets, p_debajo_Nbjets, p_dentro_Nbjets, p_encima_Nbjets = f.calculo_rangos(0, 10, list(NBjets.values()))
 
@@ -357,6 +422,14 @@ axes[1].grid(alpha=0.3)
 plt.tight_layout()
 plt.savefig(f"{selected_data_folder_path_jets}/Taus&Bjets_in_events.png", dpi=300)
 plt.show()
+
+
+
+# ============================================================================
+# PT Distribution
+# ============================================================================
+
+print('Plotting PT Distribution of single particles')
 
 tau1_pt_data = {key: ak.to_numpy(Selection_dictionary[key]["tau1"].pt) for key in Selection_dictionary}
 tau2_pt_data = {key: ak.to_numpy(Selection_dictionary[key]["tau2"].pt) for key in Selection_dictionary}
@@ -400,6 +473,13 @@ plt.savefig(f"{selected_data_folder_path_jets}/pt_distribution.png", dpi=300)
 plt.show()
 
 
+
+# ============================================================================
+# Pairs Analysis - PT and IM
+# ============================================================================
+
+print('Plotting PT and IM Distribution of pairs')
+
 filas = [
     ("pt_tautau", "pt_bb", (0, 600),  50, r"$p_T$ [GeV]",
      r"$p_T(\tau_{\mathrm{vis}}\tau_{\mathrm{vis}})$", r"$p_T(b\bar{b})$"),
@@ -440,6 +520,16 @@ plt.tight_layout(rect=(0, 0, 1, 0.93))
 plt.savefig(f"{selected_data_folder_path_jets}/pT_and_IM_pairs.png", dpi=300)
 plt.show()
 
+
+
+# ============================================================================
+# Decayed Products IM
+# ============================================================================
+
+
+print('Plotting IM Distribution of (tatabb)')
+
+
 Higgs_mass = {key: ak.to_numpy(Observables[key]["m_hh"]) for key in Observables}
 
 lim_inf_mhh, lim_sup_mhh, p_debajo_mhh, p_dentro_mhh, p_encima_mhh = f.calculo_rangos(130,1500, list(Higgs_mass.values()))
@@ -465,6 +555,15 @@ plt.tight_layout()
 plt.savefig(f"{selected_data_folder_path_jets}/InvariantMass_distribution.png", dpi=300)
 plt.show()
 
+
+
+
+# ============================================================================
+# Angular Analysis
+# ============================================================================
+
+print('Plotting Angular Distributions')
+
 DeltaR_TT = {key: ak.to_numpy(Observables[key]["dR_tautau"]) for key in Observables}
 DeltaR_BB = {key: ak.to_numpy(Observables[key]["dR_bb"]) for key in Observables}
 
@@ -478,10 +577,6 @@ ax2.text(0.98, 0.80, Data_text_ID_jets, transform=ax2.transAxes,
 
 kw = dict(bins=50,range=(0,6),histtype="step", density = True, linewidth=2)
 
-# ==========================================================
-# Primer gráfico
-# ==========================================================
-
 for key, arr in DeltaR_TT.items():
     ax1.hist(arr, **kw, label=fr"{key}")
 
@@ -490,10 +585,6 @@ ax1.set_ylabel("Normalized Events", fontsize=14)
 ax1.grid(alpha=0.3)
 ax1.legend(fontsize=10)
 
-# ==========================================================
-# Segundo gráfico
-# ==========================================================
-
 for key, arr in DeltaR_BB.items():
     ax2.hist(arr, **kw, label=fr"{key}")
 
@@ -501,16 +592,16 @@ ax2.set_xlabel(r"$\Delta R(b,\bar{b})$", fontsize=14)
 ax2.grid(alpha=0.3)
 ax2.legend(fontsize=10)
 
-# ==========================================================
-# Ajustes finales
-# ==========================================================
-
 plt.tight_layout()
-
 plt.savefig(f"{selected_data_folder_path_jets}/DeltaR_distribution.png", dpi=300)
-
 plt.show()
 
+
+
+
+# ============================================================================
+# 2D Analysis
+# ============================================================================
 
 list_DeltaR_tautau = [DeltaR_TT[key] for key in DeltaR_TT]
 list_DeltaR_bb = [DeltaR_BB[key] for key in DeltaR_BB]
