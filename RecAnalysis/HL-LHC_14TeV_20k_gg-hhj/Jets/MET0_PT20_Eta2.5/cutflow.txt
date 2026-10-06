@@ -1,0 +1,11 @@
+Gen. Events: 20k
+ToF: gg-hhj
+Delphes: HL-LHC
+$\sqrt{s}$ = 14TeV
+MET > 0 GeV
+$p_T$ > 20 GeV
+$|\eta| < 2.5$
+
+Muestra             Generados  Pasan MET  Acept. MET  Sel. 2t+2b   Acept.  Acept. tot.  Ev. doble tag  % doble
+----------------------------------------------------------------------------------------------------------------
+signal                  13122      13122     100.00%           2    0.02%        0.02%            528    4.02%
