@@ -17,6 +17,9 @@ vec.register_awkward()
 # Parameters
 # ============================================================================
 
+# common_path_of_data = "/mnt/R5/gbarco/BM500_gghh/ROOTs/"
+# saving_path = '/home/gbarco/DiHiggsProject'
+
 common_path_of_data = "/home/usuario/Madgraph/projects/"
 saving_path = '/home/usuario/VSCode/diHiggs-Project/RecAnalysis'
 
@@ -34,13 +37,13 @@ Pre_eta_track = 2.5
 
 Delphes = "HL-LHC"
 Energy_label = "14TeV"
-Gen_events = "200k"
+BenchMark = "BM500"
 process = "gg-hhj"
 
 # Paths
 
 rutas = {
-    "signal": common_path_of_data + "/output_ggHH_bbtata_BP1_*_delphes_events.root",
+    "signal": common_path_of_data + "gg_hh-LQs/signal/Events/Prueba_varios_ROOT/*.root",
 }
 
 # ============================================================================
@@ -49,7 +52,7 @@ rutas = {
 
 print('Loading Data...')
 
-data_to_analyse = f"{Delphes}_{Energy_label}_{Gen_events}_P{process}"
+data_to_analyse = f"{Delphes}_{Energy_label}_{BenchMark}_{process}"
 
 extracted_keys = ["Jet.PT","Jet.Eta", "Jet.Phi", "Jet.Mass", "Jet.BTag","Jet.TauTag", "MissingET.MET",
             'Track.PT', 'Track.Eta', 'Track.Phi', 'Track.Mass', 'Track.PID', 'Track.DZ', 'Track.D0', 'Track.Charge']
@@ -60,11 +63,11 @@ def data_loader(rutas):
 
 all_data = data_loader(rutas)
 
-folder_path = f'{saving_path}/{data_to_analyse}'
+Global_folder_path = f'{saving_path}/{data_to_analyse}'
 
-f.print_sample_info(Delphes, Energy_label, Gen_events, process, data_to_analyse)
+f.print_sample_info(Delphes, Energy_label, BenchMark, process, data_to_analyse)
 
-os.makedirs(folder_path, exist_ok=True)
+os.makedirs(Global_folder_path, exist_ok=True)
 
 
 # ============================================================================
@@ -78,7 +81,7 @@ MET_data = {key: all_data[key]["MissingET.MET"] for key in all_data}
 lim_inf, lim_sup, p_debajo, p_dentro, p_encima = f.calculo_rangos(0,400, list(MET_data.values()))
 
 Data_text_ID_precut = (fr"Delphes: {Delphes} " r"$\sqrt{s}$" f" = {Energy_label}" "\n"
-                fr"# Events = {Gen_events}")
+                fr"# Events = {BenchMark}")
 
 plt.figure(figsize=(8,6))
 
@@ -97,9 +100,8 @@ plt.legend(loc = 'center right')
 plt.grid(alpha=0.3)
 
 plt.tight_layout()
-plt.savefig(f"{folder_path}/MET_distribution.png", dpi=300)
-plt.show()
-
+plt.savefig(f"{Global_folder_path}/MET_distribution.png", dpi=300)
+plt.close()
 
 
 # ============================================================================
@@ -108,19 +110,19 @@ plt.show()
 
 print('Building Jets and Tracks')
 
-selected_data_folder_path_jets = f"{data_to_analyse}/Jets/MET{MET_LowerBond}_PT{Pre_PT_jet}_Eta{Pre_eta_jet}"
-selected_data_folder_path_tracks = f"{data_to_analyse}/Tracks/MET{MET_LowerBond}_PT{Pre_PT_track}_Eta{Pre_eta_track}"
+SubFolder_Jets = f"{data_to_analyse}/Jets/MET{MET_LowerBond}_PT{Pre_PT_jet}_Eta{Pre_eta_jet}"
+SubFolder_Tracks = f"{data_to_analyse}/Tracks/MET{MET_LowerBond}_PT{Pre_PT_track}_Eta{Pre_eta_track}"
 
-Data_text_ID_jets = ("Gen. Events: " f"{Gen_events}" "\n"
-                f"ToF: {process}" "\n"
+Data_text_ID_jets = ("BenchMark: " f"{BenchMark}" "\n"
+                f"Process: {process}" "\n"
                 fr"Delphes: {Delphes}" "\n"
                 r"$\sqrt{s}$" f" = {Energy_label}" "\n"
                 fr"MET > {MET_LowerBond} GeV" "\n"
                 fr"$p_T$ > {Pre_PT_jet} GeV" "\n"
                 rf"$|\eta| < {Pre_eta_jet}$")
 
-Data_text_ID_tracks = ("Gen. Events: " f"{Gen_events}" "\n"
-                    f"ToF: {process}" "\n"
+Data_text_ID_tracks = ("BenchMark: " f"{BenchMark}" "\n"
+                    f"Process: {process}" "\n"
                     fr"Delphes: {Delphes}" "\n"
                     r"$\sqrt{s}$" f" = {Energy_label}" "\n"
                     fr"MET > {MET_LowerBond} GeV" "\n"
@@ -128,8 +130,8 @@ Data_text_ID_tracks = ("Gen. Events: " f"{Gen_events}" "\n"
                     rf"$|\eta| < {Pre_eta_track}$")
 
 
-os.makedirs(selected_data_folder_path_jets, exist_ok=True)
-os.makedirs(selected_data_folder_path_tracks, exist_ok=True)
+os.makedirs(SubFolder_Jets, exist_ok=True)
+os.makedirs(SubFolder_Tracks, exist_ok=True)
 
 
 def build_objects(data, MET_LowerBond, Pre_PT_jet, Pre_eta_jet, Pre_PT_track, Pre_eta_track):
@@ -149,11 +151,18 @@ jets, tracks = build_objects(all_data, MET_LowerBond, Pre_PT_jet, Pre_eta_jet,
 # ===                                                                      ===
 # ============================================================================
 
-print('Begin Track Analysis')
+print(' ')
+print('====================')
+print('   Track Analysis   ')
+print('====================')
+print(' ')
 
 # ============================================================================
 # Eta, Phi and PT
 # ============================================================================
+
+
+print('Plotting Eta, Phi and PT Distributions of Tracks')
 
 pt_data = {key: ak.to_numpy(ak.flatten(tracks[key].pt)) for key in tracks}
 eta_data = {key: ak.to_numpy(ak.flatten(tracks[key].eta)) for key in tracks}
@@ -204,13 +213,15 @@ for ax in axes:
 
 
 plt.tight_layout()
-plt.savefig(f"{selected_data_folder_path_tracks}/Tracks_distributions.png", dpi=300)
-plt.show()
+plt.savefig(f"{SubFolder_Tracks}/Tracks_distributions.png", dpi=300)
+plt.close()
 
 
 # ============================================================================
 # Vertex Parameters -- D0 and Dz
 # ============================================================================
+
+print('Plotting Vertex Parameters')
 
 d0_data = {key: ak.to_numpy(ak.flatten(tracks[key].d0)) for key in tracks}
 dz_data = {key: ak.to_numpy(ak.flatten(tracks[key].dz)) for key in tracks}
@@ -249,14 +260,16 @@ for ax in axes:
         ha="right", va="top", fontsize=10, family="DejaVu Serif")
 
 plt.tight_layout()
-plt.savefig(f"{selected_data_folder_path_tracks}/Vertex_displacement.png", dpi=300)
-plt.show()
+plt.savefig(f"{SubFolder_Tracks}/Vertex_displacement.png", dpi=300)
+plt.close()
 
 
 
 # ============================================================================
 # Tracks per Event
 # ============================================================================
+
+print('Plotting Number of Tracks per Event')
 
 ntrk_data = {key: ak.to_numpy(ak.num(tracks[key], axis=1)) for key in tracks}
 
@@ -279,11 +292,8 @@ plt.grid()
 plt.legend(loc = 'upper left')
 
 plt.tight_layout()
-plt.savefig(f"{selected_data_folder_path_tracks}/Number_of_Tracks.png", dpi=300)
-plt.show()
-
-
-print('Finished Track Analysis')
+plt.savefig(f"{SubFolder_Tracks}/Number_of_Tracks.png", dpi=300)
+plt.close()
 
 # ============================================================================
 # ===                                                                      ===
@@ -291,13 +301,15 @@ print('Finished Track Analysis')
 # ===                                                                      ===
 # ============================================================================
 
-print('Begin Jet Analysis')
+print(' ')
+print('====================')
+print('    Jet Analysis    ')
+print('====================')
+print(' ')
 
 # ============================================================================
 # Selection and Observables buildup
 # ============================================================================
-
-print('Selection of 2tau+2bjets events')
 
 def build_taus_and_bjets(jets_input):
     
@@ -379,16 +391,21 @@ for key in all_data:
                   f"{n_dt:>14} {pct_dt:>7.2f}%")
 
 texto = "\n".join(lineas)
+
+
+print(' ')
+print('===============================================================================')
+print('Cutflow Summary:')
+print(' ')
 print(texto)
-_ = (Path(selected_data_folder_path_jets) / "cutflow.txt").write_text(texto + "\n")
-
-
-
+_ = (Path(SubFolder_Jets) / "cutflow.txt").write_text(texto + "\n")
+print(' ')
+print('===============================================================================')
+print(' ')
 
 # ============================================================================
 # Taus and Bjets per event
 # ============================================================================
-
 
 print('Plotting Num of Taus and Bjets per event')
 
@@ -420,8 +437,8 @@ axes[1].legend(loc = "center right")
 axes[1].grid(alpha=0.3)
 
 plt.tight_layout()
-plt.savefig(f"{selected_data_folder_path_jets}/Taus&Bjets_in_events.png", dpi=300)
-plt.show()
+plt.savefig(f"{SubFolder_Jets}/Taus&Bjets_in_events.png", dpi=300)
+plt.close()
 
 
 
@@ -469,8 +486,8 @@ axes[0].text(0.98, 0.8, Data_text_ID_jets, transform=axes[0].transAxes,
 axes[0].set_ylabel("Normalized Events")
 
 plt.tight_layout()
-plt.savefig(f"{selected_data_folder_path_jets}/pt_distribution.png", dpi=300)
-plt.show()
+plt.savefig(f"{SubFolder_Jets}/pt_distribution.png", dpi=300)
+plt.close()
 
 
 
@@ -517,8 +534,8 @@ axes[0, 0].text(0.98, 0.80, Data_text_ID_jets, transform=axes[0, 0].transAxes, h
          fontsize=9, family="DejaVu Serif")
 
 plt.tight_layout(rect=(0, 0, 1, 0.93))
-plt.savefig(f"{selected_data_folder_path_jets}/pT_and_IM_pairs.png", dpi=300)
-plt.show()
+plt.savefig(f"{SubFolder_Jets}/pT_and_IM_pairs.png", dpi=300)
+plt.close()
 
 
 
@@ -552,8 +569,8 @@ plt.legend()
 plt.grid(alpha=0.3)
 
 plt.tight_layout()
-plt.savefig(f"{selected_data_folder_path_jets}/InvariantMass_distribution.png", dpi=300)
-plt.show()
+plt.savefig(f"{SubFolder_Jets}/InvariantMass_distribution.png", dpi=300)
+plt.close()
 
 
 
@@ -593,8 +610,8 @@ ax2.grid(alpha=0.3)
 ax2.legend(fontsize=10)
 
 plt.tight_layout()
-plt.savefig(f"{selected_data_folder_path_jets}/DeltaR_distribution.png", dpi=300)
-plt.show()
+plt.savefig(f"{SubFolder_Jets}/DeltaR_distribution.png", dpi=300)
+plt.close()
 
 
 
@@ -629,5 +646,5 @@ axes[0].set_ylabel(r"$\Delta R(b,\bar{b})$", fontsize=13)
 
 fig.colorbar(h[3], ax=axes, label="Eventos", fraction=0.025, pad=0.02)
 
-plt.savefig(f"{selected_data_folder_path_jets}/2D-DeltaR_por_muestra.png", dpi=300)
-plt.show()
+plt.savefig(f"{SubFolder_Jets}/2D-DeltaR_por_muestra.png", dpi=300)
+plt.close()

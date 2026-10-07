@@ -30,16 +30,16 @@ def pi_formatter(x, pos):
 
 def print_sample_info(Delphes, Energy_label, Total_events, time_of_flight, data_to_analyse):
 
-    print("┌─────────────────────────────────────┐")
-    print("│           SAMPLE INFORMATION        │")
-    print("├─────────────────────────────────────┤")
-    print(f"│ Delphes       : {Delphes:<20}│")
-    print(f"│ Energy        : {Energy_label:<20}│")
-    print(f"│ Total events  : {Total_events:<20}│")
-    print(f"│ Time of flight: {time_of_flight:<20}│")
-    print("├─────────────────────────────────────┤")
-    print(f"│ Dataset       : {data_to_analyse:<20}│")
-    print("└─────────────────────────────────────┘")
+    print("┌────────────────────────────────────────────────┐")
+    print("│                 SAMPLE INFORMATION             │")
+    print("├────────────────────────────────────────────────┤")
+    print(f"│ Delphes       : {Delphes:<31}│")
+    print(f"│ Energy        : {Energy_label:<31}│")
+    print(f"│ Total events  : {Total_events:<31}│")
+    print(f"│ Time of flight: {time_of_flight:<31}│")
+    print("├────────────────────────────────────────────────┤")
+    print(f"│ Dataset       : {data_to_analyse:<31}│")
+    print("└────────────────────────────────────────────────┘")
 
 def parse_events(s):
     s = s.strip().lower()
