@@ -1,0 +1,11 @@
+BenchMark: Pruebas_sinJ
+Process: gg-hhj
+Delphes: HL-LHC
+$\sqrt{s}$ = 14TeV
+MET > 0 GeV
+$p_T$ > 20 GeV
+$|\eta| < 2.5$
+
+Muestra             Generados  Pasan MET  Acept. MET  Sel. 2t+2b   Acept.  Acept. tot.  Ev. doble tag  % doble
+----------------------------------------------------------------------------------------------------------------
+signal                 100000     100000     100.00%        2491    2.49%        2.49%           6848    6.85%

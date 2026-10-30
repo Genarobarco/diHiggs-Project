@@ -17,15 +17,11 @@ vec.register_awkward()
 # Parameters
 # ============================================================================
 
-# common_path_of_data = "/mnt/R5/gbarco/BM500_gghh/ROOTs/"
-# saving_path = '/home/gbarco/DiHiggsProject'
-
-common_path_of_data = "/home/usuario/Madgraph/projects/"
-saving_path = '/home/usuario/VSCode/diHiggs-Project/RecAnalysis'
+saving_path = '/home/gbarco/DiHiggsProject'
 
 # MET Selection
 
-MET_LowerBond = 0     # GeV
+MET_LowerBond = 80     # GeV
 
 # Jets preselection cuts
 Pre_PT_jet = 20       # GeV
@@ -43,7 +39,8 @@ process = "gg-hhj"
 # Paths
 
 rutas = {
-    "signal": common_path_of_data + "gg_hh-LQs/signal/Events/Prueba_varios_ROOT/*.root",
+    "LQ - gg > hhj": "/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_*.root",
+    "BG - pp > tthj": "/mnt/R5/gbarco/pp_tthj_1800k/ROOTs/output_*.root", 
 }
 
 # ============================================================================
@@ -80,8 +77,9 @@ MET_data = {key: all_data[key]["MissingET.MET"] for key in all_data}
 
 lim_inf, lim_sup, p_debajo, p_dentro, p_encima = f.calculo_rangos(0,400, list(MET_data.values()))
 
-Data_text_ID_precut = (fr"Delphes: {Delphes} " r"$\sqrt{s}$" f" = {Energy_label}" "\n"
-                fr"# Events = {BenchMark}")
+Data_text_ID_precut = ( fr"BenchMark = {BenchMark}" "\n"
+                        fr"Delphes: {Delphes} " "\n"
+                        r"$\sqrt{s}$" f" = {Energy_label}")
 
 plt.figure(figsize=(8,6))
 
@@ -110,8 +108,8 @@ plt.close()
 
 print('Building Jets and Tracks')
 
-SubFolder_Jets = f"{data_to_analyse}/Jets/MET{MET_LowerBond}_PT{Pre_PT_jet}_Eta{Pre_eta_jet}"
-SubFolder_Tracks = f"{data_to_analyse}/Tracks/MET{MET_LowerBond}_PT{Pre_PT_track}_Eta{Pre_eta_track}"
+SubFolder_Jets = f"{Global_folder_path}/Jets/MET{MET_LowerBond}_PT{Pre_PT_jet}_Eta{Pre_eta_jet}"
+SubFolder_Tracks = f"{Global_folder_path}/Tracks/MET{MET_LowerBond}_PT{Pre_PT_track}_Eta{Pre_eta_track}"
 
 Data_text_ID_jets = ("BenchMark: " f"{BenchMark}" "\n"
                 f"Process: {process}" "\n"
@@ -215,6 +213,40 @@ for ax in axes:
 plt.tight_layout()
 plt.savefig(f"{SubFolder_Tracks}/Tracks_distributions.png", dpi=300)
 plt.close()
+
+
+# ============================================================================
+# 2D Eta and Phi
+# ============================================================================
+
+print('Plotting 2D Distributions tracks eta and phi')
+
+
+list_keys = list(rutas.keys())
+rango = [[-4, 4], [-4, 4]]
+
+fig, axes = plt.subplots(1, len(list_keys), figsize=(5.5*len(list_keys), 6),
+                         sharex=True, sharey=True, squeeze=False)
+axes = axes[0]
+
+for ax, key in zip(axes, list_keys):
+    x, y = eta_data[key], phi_data[key]
+    h = ax.hist2d(x, y, bins=50, range=rango, cmap="magma", cmin=1)
+
+    ax.set_facecolor("black")
+    ax.set_title(key, fontsize=12)
+    ax.set_xlabel(r"$\eta$", fontsize=13)
+    ax.text(0.02, 0.97, f"N = {len(x)}", transform=ax.transAxes,
+            ha="left", va="top", fontsize=9, color="white")
+    ax.text(0.97, 0.99, Data_text_ID_jets, transform=ax.transAxes,
+            ha="right", va="top", fontsize=9, family="DejaVu Serif", color="white")
+
+axes[0].set_ylabel(r"$\phi$", fontsize=13)
+
+fig.colorbar(h[3], ax=axes, label="Tracks", fraction=0.025, pad=0.02)
+
+plt.savefig(f"{SubFolder_Tracks}/2D-eta_phi_por_muestra.png", dpi=300)
+plt.show()
 
 
 # ============================================================================
@@ -338,6 +370,7 @@ def build_observables(sel):
             "pt_tautau": tup_tt[1], "pt_bb": tup_bb[1], "pt_hh": tup_hh[1],
             "dR_tautau": t1.deltaR(t2),
             "dR_bb":     bb1.deltaR(bb2),
+            "dR_hh": (t1+t2).deltaR(bb1 + bb2)
         }
     return obs
 
@@ -395,7 +428,7 @@ texto = "\n".join(lineas)
 
 print(' ')
 print('===============================================================================')
-print('Cutflow Summary:')
+print('JETs Cutflow Summary:')
 print(' ')
 print(texto)
 _ = (Path(SubFolder_Jets) / "cutflow.txt").write_text(texto + "\n")
@@ -614,33 +647,30 @@ plt.savefig(f"{SubFolder_Jets}/DeltaR_distribution.png", dpi=300)
 plt.close()
 
 
-
-
 # ============================================================================
-# 2D Analysis
+# 2D Analysis tau-tau and b-b
 # ============================================================================
 
-list_DeltaR_tautau = [DeltaR_TT[key] for key in DeltaR_TT]
-list_DeltaR_bb = [DeltaR_BB[key] for key in DeltaR_BB]
-
-etiquetas = ["Señal (LQ)", r"BG (gg > t$\bar{t}$h)", "SM"]
-
-fig, axes = plt.subplots(1, len(Observables.keys()), figsize=(5.5*ncols, 6), sharex=True, sharey=True, squeeze=False)
-axes = axes[0]
+list_keys = list(DeltaR_TT.keys())
 rango = [[0, 6], [0, 6]]
 norm  = LogNorm(vmin=1, vmax=50)
 
-for ax, name, dr_tt, dr_bb in zip(axes, etiquetas, list_DeltaR_tautau, list_DeltaR_bb):
-    x = ak.to_numpy(dr_tt)
-    y = ak.to_numpy(dr_bb)
-    h = ax.hist2d(x, y, bins=50, range=rango, cmap="magma", norm=norm, cmin=1)
+fig, axes = plt.subplots(1, len(list_keys), figsize=(5.5*len(list_keys), 6),
+                         sharex=True, sharey=True, squeeze=False)
+axes = axes[0]
+
+for ax, key in zip(axes, list_keys):
+    x = ak.to_numpy(DeltaR_TT[key])
+    y = ak.to_numpy(DeltaR_BB[key])
+    h = ax.hist2d(x, y, bins=50, range=rango, cmap="magma", norm = norm, cmin=1)
+
     ax.set_facecolor("black")
-    ax.set_title(name, fontsize=12)
+    ax.set_title(key, fontsize=12)
     ax.set_xlabel(r"$\Delta R(\tau_{\rm vis},\tau_{\rm vis})$", fontsize=13)
-    ax.text(0.97, 0.97, Data_text_ID_jets, transform=ax.transAxes,
-            ha="right", va="top", fontsize=9, color="white")
-    ax.text(0.3, 0.97, f'N = {len(x)}', transform=ax.transAxes,
-            ha="right", va="top", fontsize=9, color="white")
+    ax.text(0.02, 0.97, f"N = {len(x)}", transform=ax.transAxes,
+            ha="left", va="top", fontsize=9, color="white")
+    ax.text(0.97, 0.99, Data_text_ID_jets, ha="right", va="top", transform=ax.transAxes,
+         fontsize=9, family="DejaVu Serif", color = 'white')
 
 axes[0].set_ylabel(r"$\Delta R(b,\bar{b})$", fontsize=13)
 
@@ -648,3 +678,87 @@ fig.colorbar(h[3], ax=axes, label="Eventos", fraction=0.025, pad=0.02)
 
 plt.savefig(f"{SubFolder_Jets}/2D-DeltaR_por_muestra.png", dpi=300)
 plt.close()
+
+
+
+# ============================================================================
+# Higgses Analysis
+# ============================================================================
+
+print(' ')
+print('====================')
+print('   Higgs Analysis   ')
+print('====================')
+print(' ')
+
+
+# ============================================================================
+# 2D PT Distribution of H(tautau) and H(bb)
+# ============================================================================
+
+print('Plotting PT correlation between leptonic and hadronic H')
+
+
+pT_h_tautau = {key: ak.to_numpy(Observables[key]["pt_tautau"]) for key in Observables}
+pt_h_bb = {key: ak.to_numpy(Observables[key]["pt_bb"]) for key in Observables}
+
+rango = [[0, 500], [0, 500]]
+# norm  = LogNorm(vmin=1, vmax=50)
+
+fig, axes = plt.subplots(1, len(list_keys), figsize=(5.5*len(list_keys), 6),
+                         sharex=True, sharey=True, squeeze=False)
+axes = axes[0]
+
+for ax, key in zip(axes, list_keys):
+    x = ak.to_numpy(pT_h_tautau[key])
+    y = ak.to_numpy(pt_h_bb[key])
+    h = ax.hist2d(x, y, bins=50, range=rango, cmap="magma", cmin=1)
+    
+
+    ax.axline((0, 0), slope=1, color="red", linestyle="--", linewidth=1)
+    ax.set_facecolor("black")
+    ax.set_title(key, fontsize=12)
+    ax.set_xlabel(r"$p_T(\tau \tau)$ [GeV]", fontsize=13)
+    ax.text(0.02, 0.97, f"N = {len(x)}", transform=ax.transAxes,
+            ha="left", va="top", fontsize=9, color="white")
+    ax.text(0.97, 0.99, Data_text_ID_jets, ha="right", va="top", transform=ax.transAxes,
+         fontsize=9, family="DejaVu Serif", color = 'white')
+
+axes[0].set_ylabel(r"$p_T(bb)$ [GeV]", fontsize=13)
+
+fig.colorbar(h[3], ax=axes, label="Eventos", fraction=0.025, pad=0.02)
+
+fig.savefig(f"{SubFolder_Jets}/2D-PT_hpair_distribution.png", dpi=300)
+plt.show()
+
+
+# ============================================================================
+# DR Distribution between H(tautau) and H(bb)
+# ============================================================================
+
+print('Plotting DR distribution of H(tautau) and H(bb)')
+
+DR_of_Higgses = {key: ak.to_numpy(Observables[key]["dR_hh"]) for key in Observables}
+
+lim_inf_dRhh, lim_sup_dRhh, p_debajo_dRhh, p_dentro_dRhh, p_encima_dRhh = f.calculo_rangos(0, 6, list(DR_of_Higgses.values()))
+
+texto_Higgs = (f"Debajo de {lim_inf_dRhh} GeV : {p_debajo_dRhh:.2f}%\n"f"Dentro del rango : {p_dentro_dRhh:.2f}%\n"f"Encima de {lim_sup_dRhh} GeV : {p_encima_dRhh:.2f}%")
+
+plt.figure(figsize=(8,6))
+
+plt.text(0.98, 0.84, Data_text_ID_jets, transform=plt.gca().transAxes,
+        ha="right", va="top", fontsize=10, family="DejaVu Serif")
+
+plt.text(0.98, 0.98,texto_Higgs,transform=plt.gca().transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
+
+for key, arr in DR_of_Higgses.items():
+    plt.hist(ak.to_numpy(arr), bins=40, density=True, range=(lim_inf_dRhh, lim_sup_dRhh), histtype="step", linewidth=2, label=fr'{key}')
+
+plt.xlabel(r"$\Delta R(h_{\tau \tau}, h_{bb})$")
+plt.ylabel("Eventos")
+plt.legend()
+plt.grid(alpha=0.3)
+
+plt.tight_layout()
+plt.savefig(f"{SubFolder_Jets}/DR_Htautau_Hbb.png", dpi=300)
+plt.show()
