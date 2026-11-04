@@ -1,0 +1,83 @@
+# lightning.pytorch==2.2.0
+name: GN2Tau_tracks
+
+model:
+  model:
+    class_path: salt.models.SaltModel
+    init_args:
+      init_nets:
+      - input_name: tracks
+        attach_global: false  # no hay variables de jets: no concatenar contexto global
+        dense_config:
+          output_size: &embed_dim 16
+          hidden_layers:
+          - 16
+          - 32
+          activation: &activation SiLU
+
+      encoder:
+        class_path: salt.models.Transformer
+        init_args:
+          embed_dim: *embed_dim
+          num_layers: 2
+          out_dim: &out_dim 16
+          attn_kwargs:
+            num_heads: 2
+          dense_kwargs:
+            activation: *activation
+            dropout: &dropout 0.1
+
+      pool_net:
+        class_path: salt.models.GlobalAttentionPooling
+        init_args:
+          input_size: *out_dim
+
+      tasks:
+        class_path: torch.nn.ModuleList
+        init_args:
+          modules:
+          - class_path: salt.models.ClassificationTask
+            init_args:
+              name: jets_classification
+              input_name: jets
+              label: flavour_label
+              class_names:
+              - hadtaujets
+              - qcdjets
+              use_class_dict: true
+              dense_config: &task_dense_config
+                input_size: *out_dim
+                output_size: 2
+                hidden_layers:
+                - 16
+                - 32
+                - 16 
+                activation: *activation
+                dropout: 0.1
+              loss:
+                class_path: torch.nn.CrossEntropyLoss
+                init_args:
+                  size_average: null
+                  ignore_index: -100
+                  reduce: null
+                  reduction: mean
+                  label_smoothing: 0.0
+              weight: 1.0
+ 
+  lrs_config:
+    initial: 1.0e-08
+    max: 0.001
+    end: 1.0e-08
+    pct_start: 0.1
+    weight_decay: 1.0e-05
+
+
+data:
+  variables:
+    # sin variables de 'jets': ese dataset solo lleva flavour_label
+    tracks:
+    - PT
+    - Eta
+    - Phi
+    - DZ
+    - D0

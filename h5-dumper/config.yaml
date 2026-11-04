@@ -1,0 +1,41 @@
+tree_name: Delphes
+
+# Top-level cuts select events. Table-level cuts below select individual constituents.
+cuts:
+  - 'GenMissingET.MET > 100.0'
+
+tables:
+#  - name: 'events'
+#    global_table: true
+    # Global columns can map output names to full branch names. Vector columns use entry 0 by default;
+    # specify a zero-based index in the branch name (e.g. "Towers[5].ET") to select another entry.
+#    columns:
+#      - 'Number': 'Event.Number'
+#      - 'Weight': 'Event.Weight'
+#      - 'CrossSection': 'Event.CrossSection'
+#      - 'MET_ET': 'GenMissingET.MET'
+#      - 'MET_Phi': 'GenMissingET.Phi'
+
+  - name: 'tracks'
+    n_rows: 250
+    prefixes: 'Track'
+    separator: '.'
+    cuts:
+      - 'PT > 0'
+    columns:
+      - PT
+      - Eta
+      - Phi
+      - DZ
+      - D0
+      #- FromBLead
+      #- FromBSubl
+      #- FromTauLead
+      #- FromTauSubl
+
+#      - name: origin
+#        type: int
+#        values:
+          # No idea if this is correct! Maybe PID has something else? Or is related to the actual final particle? (e.g. the pions instead of the tau?)
+#          'abs(PID) == 5': 1 # B-jet
+#          'abs(PID) == 15': 2 # Tau

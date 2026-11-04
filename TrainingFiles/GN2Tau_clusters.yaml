@@ -1,0 +1,133 @@
+# lightning.pytorch==2.2.0
+name: GN2Tau_clusters_allvars
+
+model:
+  model:
+    class_path: salt.models.SaltModel
+    init_args:
+      init_nets:
+      - input_name: clusters
+        dense_config:
+          output_size: &embed_dim 16
+          hidden_layers:
+          - 16
+          - 32
+          activation: &activation SiLU
+        global_object: jets
+
+      encoder:
+        class_path: salt.models.Transformer
+        init_args:
+          embed_dim: *embed_dim
+          num_layers: 2
+          out_dim: &out_dim 16
+          attn_kwargs:
+            num_heads: 2
+          dense_kwargs:
+            activation: *activation
+            dropout: &dropout 0.1
+
+      pool_net:
+        class_path: salt.models.GlobalAttentionPooling
+        init_args:
+          input_size: *out_dim
+
+      tasks:
+        class_path: torch.nn.ModuleList
+        init_args:
+          modules:
+          - class_path: salt.models.ClassificationTask
+            init_args:
+              name: jets_classification
+              input_name: jets
+              label: flavour_label
+              class_names:
+              - hadtaujets
+              - qcdjets
+              use_class_dict: true
+              dense_config: &task_dense_config
+                input_size: *out_dim
+                output_size: 2
+                hidden_layers:
+                - 16
+                - 32
+                - 16 
+                activation: *activation
+                dropout: 0.1
+              loss:
+                class_path: torch.nn.CrossEntropyLoss
+                init_args:
+                  size_average: null
+                  ignore_index: -100
+                  reduce: null
+                  reduction: mean
+                  label_smoothing: 0.0
+              weight: 1.0
+ 
+  lrs_config:
+    initial: 1.0e-08
+    max: 0.001
+    end: 1.0e-08
+    pct_start: 0.1
+    weight_decay: 1.0e-05
+
+
+data:
+  variables:
+    jets:
+    - pt 
+    #- eta 
+    
+    # Tau high-level variables
+    #- centFracFromTrigTauJet
+    #- isolFracFromTrigTauJet
+    #- EMRadiusFromTrigTauJet
+    #- hadRadiusFromTrigTauJet
+
+    # Tau cell-level variables
+    - numCells
+    - cellBasedEnergyRing1
+    - cellBasedEnergyRing2
+    - cellBasedEnergyRing3
+    - cellBasedEnergyRing4
+    - cellBasedEnergyRing5
+    - cellBasedEnergyRing6
+    - cellBasedEnergyRing7
+
+    # Cluster substructure high-level variables
+    # Original Input Variables (OIV)
+    #- centFrac 
+    #- ptRatioEflowApprox
+    #- mEflowApprox
+    
+    # High Level Variables (HLV)
+    #- isolFrac #Esta falto en las corridas previas de HLV
+    #- EMRadius
+    #- hadRadius
+    #- numTopoClusters
+    #- numEffTopoClusters
+    #- topoInvMass
+    #- effTopoInvMass
+    #- topoMeanDeltaR
+    #- effTopoMeanDeltaR
+    #- PSSFraction
+
+    clusters:
+    - et
+    - deta
+    - dphi
+
+    - CENTER_MAG # Energy magnitude at the cluster centroid
+    - CENTER_LAMBDA # Shower depth at the cluster centroid
+
+    - SECOND_R # Second moment in R (radius)
+    - SECOND_LAMBDA # Second moment in lambda (depth)
+
+    - FIRST_ENG_DENS # First moment in E/V
+    - EM_PROBABILITY # Classification probability of the cluster to be EM-like (for the LC energy calibration)
+      
+    - E_FRAC_EM0 # Fraction of energy in the EMCal layer 0 (PS)
+    - E_FRAC_EM1 # Fraction of energy in the EMCal layer 1
+    - E_FRAC_EM2 # Fraction of energy in the EMCal layer 2
+    - E_FRAC_EM3 # Fraction of energy in the EMCal layer 3
+    - E_FRAC_HAD # Fraction of energy in the HCal

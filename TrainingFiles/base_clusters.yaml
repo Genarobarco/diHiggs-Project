@@ -1,0 +1,65 @@
+# lightning/pytorch/trainer/trainer.py arguments
+trainer:
+  accelerator: gpu
+  devices: 1
+  #precision: bf16
+  max_epochs: 50
+  default_root_dir: /scratch/ATLAS/TauTrigger/salt_output/
+  log_every_n_steps: 50
+  logger:
+    class_path: lightning.pytorch.loggers.CometLogger
+
+  callbacks:
+  - class_path: salt.callbacks.Checkpoint
+    init_args:
+      monitor_loss: val_jets_classification_loss
+      fname_string: val_loss
+
+  - class_path: salt.callbacks.PredictionWriter
+    init_args:
+      write_tracks: false
+      write_objects: false
+      half_precision: false
+      object_classes: null
+      extra_vars: null
+
+  - class_path: lightning.pytorch.callbacks.LearningRateMonitor
+    init_args:
+      logging_interval: null
+      log_momentum: false
+      log_weight_decay: false
+
+  - class_path: lightning.pytorch.callbacks.TQDMProgressBar
+    init_args:
+      refresh_rate: 50
+      process_position: 0
+
+  - class_path: lightning.pytorch.callbacks.ModelSummary
+    init_args:
+      max_depth: 2
+
+
+data:
+  train_file: /scratch/ATLAS/TauTrigger/post_upp_v01_SC0_idperf/output/pp_output_train.h5
+  val_file:   /scratch/ATLAS/TauTrigger/post_upp_v01_SC0_idperf/output/pp_output_val.h5
+  test_file:  /scratch/ATLAS/TauTrigger/post_upp_v01_SC0_idperf/output/pp_output_test.h5
+  class_dict: /scratch/ATLAS/TauTrigger/post_upp_v01_SC0_idperf/output/class_dict.yaml
+  norm_dict:  /scratch/ATLAS/TauTrigger/post_upp_v01_SC0_idperf/output/norm_dict.yaml
+  batch_size: 10000 #3500
+  num_workers: 12
+  num_train: -1
+  num_val: -1
+  num_test: -1
+  test_suff: null
+  pin_memory: true
+
+  labels:
+    jets:
+    - flavour_label
+  input_map:
+    jets: jets
+    clusters: clusters
+  num_inputs: 
+    clusters: 50
+  non_finite_to_num: false
+  global_object: jets
