@@ -1,0 +1,12 @@
+BenchMark: BM500
+Process: gg-hhj
+Delphes: HL-LHC
+$\sqrt{s}$ = 14TeV
+MET > 100 GeV
+$p_T$ > 20 GeV
+$|\eta| < 2.5$
+
+Muestra             Generados  Pasan MET  Acept. MET  Sel. 2t+2b   Acept.  Acept. tot.  Ev. doble tag  % doble
+----------------------------------------------------------------------------------------------------------------
+LQ - gg > hhj         1238291     353789      28.57%       11252    3.18%        0.91%          20919    5.91%
+BG - pp > tthj        1189370     440185      37.01%       10498    2.38%        0.88%          46028   10.46%
