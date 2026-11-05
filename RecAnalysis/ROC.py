@@ -108,8 +108,11 @@ def disc_rej(time_stamp: str, n_epoch: str):
 plot_roc = RocPlot(
     n_ratio_panels=1,
     ylabel="Background rejection",
-    xlabel="$\\tau$-jet efficiency",
-    atlas_second_tag="$\\sqrt{s}=13.6$ TeV \n $\\gamma* \\to \\tau \\tau$ signal",
+    xlabel="Signal efficiency",
+    atlas_second_tag=(
+    "$\\sqrt{s}=14$ TeV\n"
+    "LQ (BM500): $gg \\to hhj$\n"
+    "BG: $pp \\to t\\bar{t}hj$"),
     figsize=(6.5, 6),
     y_scale=1.4,
 )
