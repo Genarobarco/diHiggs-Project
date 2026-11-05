@@ -23,7 +23,7 @@ RUN_NAME = "GN2Tracks_v01"  # nombre de la corrida (-n de salt fit)
 
 # (time_stamp, época, etiqueta en el gráfico)
 data_list = [
-    ("20261104-T200117", "047", "GN2Tracks v01"),
+    ("20261105-T131007", "049", "GN2Tracks v01"),
 ]
 
 SIG_EFF = np.linspace(0.3, 1.0, 100)  # eficiencias de señal donde se evalúa el rechazo
