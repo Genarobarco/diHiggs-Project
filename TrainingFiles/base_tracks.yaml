@@ -4,7 +4,7 @@ trainer:
   devices: 1
   #precision: bf16
   max_epochs: 50
-  default_root_dir: /scratch/ATLAS/TauTrigger/salt_output/
+  default_root_dir: /home/gbarco/DiHiggsProject/OutTrainings/
   log_every_n_steps: 50
   logger:
     class_path: lightning.pytorch.loggers.CometLogger
@@ -40,11 +40,11 @@ trainer:
 
 
 data:
-  train_file: /scratch/ATLAS/TauTrigger/salt_inputs_tracks_v01/pp_output_train.h5
-  val_file:   /scratch/ATLAS/TauTrigger/salt_inputs_tracks_v01/pp_output_val.h5
-  test_file:  /scratch/ATLAS/TauTrigger/salt_inputs_tracks_v01/pp_output_test.h5
-  class_dict: /scratch/ATLAS/TauTrigger/salt_inputs_tracks_v01/class_dict.yaml
-  norm_dict:  /scratch/ATLAS/TauTrigger/salt_inputs_tracks_v01/norm_dict.yaml
+  train_file: /mnt/R5/gbarco/Tracks_h5s_trainingfiles/pp_output_train.h5
+  val_file:   /mnt/R5/gbarco/Tracks_h5s_trainingfiles/pp_output_val.h5
+  test_file:  /mnt/R5/gbarco/Tracks_h5s_trainingfiles/pp_output_test.h5
+  class_dict: /mnt/R5/gbarco/Tracks_h5s_trainingfiles/class_dict.yaml
+  norm_dict:  /mnt/R5/gbarco/Tracks_h5s_trainingfiles/norm_dict.yaml
   batch_size: 10000 #3500
   num_workers: 12
   num_train: -1

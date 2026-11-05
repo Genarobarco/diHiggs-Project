@@ -2,7 +2,7 @@ tree_name: Delphes
 
 # Top-level cuts select events. Table-level cuts below select individual constituents.
 cuts:
-  - 'GenMissingET.MET > 100.0'
+  - 'MissingET.MET > 100.0'
 
 tables:
 #  - name: 'events'
@@ -17,7 +17,7 @@ tables:
 #      - 'MET_Phi': 'GenMissingET.Phi'
 
   - name: 'tracks'
-    n_rows: 250
+    n_rows: 200
     prefixes: 'Track'
     separator: '.'
     cuts:
