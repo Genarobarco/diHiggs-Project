@@ -5,7 +5,15 @@ from pathlib import Path
 import h5py
 import numpy as np
 from ftag import Flavours
-from ftag.utils import calculate_rejection
+
+try:
+    from ftag.utils import calculate_rejection
+except ImportError:
+    try:
+        from ftag.utils.metrics import calculate_rejection
+    except ImportError:
+        from puma.metrics import calc_rej as calculate_rejection
+
 from puma import Roc, RocPlot
 
 # ----------------------------------------------------------------------------------------------
