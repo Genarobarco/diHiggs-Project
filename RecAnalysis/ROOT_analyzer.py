@@ -241,9 +241,9 @@ pt_data_taus = {key: ak.to_numpy(ak.flatten(Tracks_truthTaus[key]["tracks_taus"]
 eta_data_taus = {key: ak.to_numpy(ak.flatten(Tracks_truthTaus[key]["tracks_taus"].eta)) for key in Tracks_truthTaus}
 phi_data_taus = {key: ak.to_numpy(ak.flatten(Tracks_truthTaus[key]["tracks_taus"].phi)) for key in Tracks_truthTaus}
 
-lim_inf_pt, lim_sup_pt, p_debajo_pt, p_dentro_pt, p_encima_pt = calculo_rangos(0, 100, list(MET_data.values()))
-lim_inf_eta, lim_sup_eta, p_debajo_eta, p_dentro_eta, p_encima_eta = calculo_rangos(-5,5, list(eta_data.values()))
-lim_inf_phi, lim_sup_phi, p_debajo_phi, p_dentro_phi, p_encima_phi = calculo_rangos(-3.2,3.2, list(phi_data.values()))
+lim_inf_pt, lim_sup_pt, p_debajo_pt, p_dentro_pt, p_encima_pt = f.calculo_rangos(0, 100, list(MET_data.values()))
+lim_inf_eta, lim_sup_eta, p_debajo_eta, p_dentro_eta, p_encima_eta = f.calculo_rangos(-5,5, list(eta_data.values()))
+lim_inf_phi, lim_sup_phi, p_debajo_phi, p_dentro_phi, p_encima_phi = f.calculo_rangos(-3.2,3.2, list(phi_data.values()))
 
 texto_pt = (f"Debajo de {lim_inf_pt} GeV : {p_debajo_pt:.2f}%\n"f"Dentro del rango : {p_dentro_pt:.2f}%\n"f"Encima de {lim_sup_pt} GeV : {p_encima_pt:.2f}%")
 texto_eta = (f"Debajo de {lim_inf_eta}: {p_debajo_eta:.2f}%\n"f"Dentro del rango : {p_dentro_eta:.2f}%\n"f"Encima de {lim_sup_eta}: {p_encima_eta:.2f}%")
@@ -277,7 +277,7 @@ axes[1].legend(loc = 'center right')
 
 axes[2].text(0.98, 0.97,texto_phi,transform=axes[2].transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
 axes[2].xaxis.set_major_locator(MultipleLocator(np.pi / 2))
-axes[2].xaxis.set_major_formatter(FuncFormatter(pi_formatter))
+axes[2].xaxis.set_major_formatter(FuncFormatter(f.pi_formatter))
 axes[2].set_xlabel(r"$\phi$")
 axes[2].legend(loc = 'center right')
 
@@ -354,8 +354,8 @@ dz_truthtau_tracks = {key: ak.to_numpy(ak.flatten(Tracks_truthTaus[key]["tracks_
 
 kw = dict(bins=50, density=True, histtype="step", linewidth=2)
 
-lim_inf_d0, lim_sup_d0, p_debajo_d0, p_dentro_d0, p_encima_d0 = calculo_rangos(-6,6, list(d0_data.values()))
-lim_inf_dz, lim_sup_dz, p_debajo_dz, p_dentro_dz, p_encima_dz = calculo_rangos(-30,30, list(dz_data.values()))
+lim_inf_d0, lim_sup_d0, p_debajo_d0, p_dentro_d0, p_encima_d0 = f.calculo_rangos(-6,6, list(d0_data.values()))
+lim_inf_dz, lim_sup_dz, p_debajo_dz, p_dentro_dz, p_encima_dz = f.calculo_rangos(-30,30, list(dz_data.values()))
 
 texto0 = (f"Debajo de {lim_inf_d0} mm : {p_debajo_d0:.2f}%\n"f"Dentro del rango : {p_dentro_d0:.2f}%\n"f"Encima de {lim_sup_d0} mm : {p_encima_d0:.2f}%")
 texto1 = (f"Debajo de {lim_inf_dz} mm : {p_debajo_dz:.2f}%\n"f"Dentro del rango : {p_dentro_dz:.2f}%\n"f"Encima de {lim_sup_dz} mm : {p_encima_dz:.2f}%")
@@ -402,7 +402,7 @@ print('Plotting Number of Tracks per Event')
 ntrk_data = {key: ak.to_numpy(ak.num(tracks[key], axis=1)) for key in tracks}
 ntrk_truthtau = {key: ak.to_numpy(ak.num(Tracks_truthTaus[key]["tracks_taus"], axis=1)) for key in Tracks_truthTaus}
 
-lim_inf_ntrk, lim_sup_ntrk, p_debajo_ntrk, p_dentro_ntrk, p_encima_ntrk = calculo_rangos(0,250, list(ntrk_data.values()))
+lim_inf_ntrk, lim_sup_ntrk, p_debajo_ntrk, p_dentro_ntrk, p_encima_ntrk = f.calculo_rangos(0,250, list(ntrk_data.values()))
 
 texto0 = (f"Debajo de {lim_inf_ntrk}: {p_debajo_ntrk:.2f}%\n"f"Dentro del rango : {p_dentro_ntrk:.2f}%\n"f"Encima de {lim_sup_ntrk} : {p_encima_ntrk:.2f}%")
 
