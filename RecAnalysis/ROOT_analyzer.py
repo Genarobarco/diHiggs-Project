@@ -51,15 +51,36 @@ print('Loading Data...')
 
 data_to_analyse = f"{Delphes}_{Energy_label}_{BenchMark}_{process}"
 
-extracted_keys = ["Particle.PID", "Particle.Status", "Particle.PT", "Particle.Eta", "Particle.Phi", "Particle.Mass",
-                "Jet.PT","Jet.Eta", "Jet.Phi", "Jet.Mass", "Jet.BTag","Jet.TauTag", "MissingET.MET",
-                'Track.PT', 'Track.Eta', 'Track.Phi', 'Track.Mass', 'Track.PID', 'Track.DZ', 'Track.D0', 'Track.Charge']
+reco_keys = ["Jet.PT", "Jet.Eta", "Jet.Phi", "Jet.Mass", "Jet.BTag", "Jet.TauTag",
+             "MissingET.MET",
+             "Track.PT", "Track.Eta", "Track.Phi", "Track.DZ", "Track.D0", "Track.Charge"]
+
+truth_keys = ["Particle.PID", "Particle.Status", "Particle.PT",
+              "Particle.Eta", "Particle.Phi", "Particle.Mass"]
+
+
+def load_truth_taus(path, step_size="500 MB"):
+    """Lee Particle por lotes y conserva solo los taus (status 2)."""
+    trozos = []
+    for batch in up.iterate(f"{path}:Delphes", truth_keys, step_size=step_size):
+        es_tau = (abs(batch["Particle.PID"]) == 15) & (batch["Particle.Status"] == 2)
+        trozos.append(ak.zip({
+            "pt":   batch["Particle.PT"][es_tau],
+            "eta":  batch["Particle.Eta"][es_tau],
+            "phi":  batch["Particle.Phi"][es_tau],
+            "mass": batch["Particle.Mass"][es_tau],
+            "pid":  batch["Particle.PID"][es_tau],
+        }, with_name="Momentum4D"))
+    return ak.concatenate(trozos)
+
 
 def data_loader(rutas):
-    return {key: up.concatenate(f"{path}:Delphes", extracted_keys)
-            for key, path in rutas.items()}
+    reco  = {k: up.concatenate(f"{p}:Delphes", reco_keys) for k, p in rutas.items()}
+    truth = {k: load_truth_taus(p) for k, p in rutas.items()}
+    return reco, truth
 
-all_data = data_loader(rutas)
+
+all_data, truth_taus = data_loader(rutas)
 
 Global_folder_path = f'{saving_path}/{data_to_analyse}'
 
@@ -132,16 +153,24 @@ Data_text_ID_tracks = ("BenchMark: " f"{BenchMark}" "\n"
 os.makedirs(SubFolder_Jets, exist_ok=True)
 os.makedirs(SubFolder_Tracks, exist_ok=True)
 
-
-def build_objects(data, MET_LowerBond, Pre_PT_jet, Pre_eta_jet, Pre_PT_track, Pre_eta_track):
+def build_objects(data, truth, MET_LowerBond, Pre_PT_jet, Pre_eta_jet,
+                  Pre_PT_track, Pre_eta_track):
     jets, tracks, gen = {}, {}, {}
     for key, d in data.items():
-        jets[key], tracks[key], gen[key] = f.Selected_data(d, MET_LowerBond, Pre_PT_jet, Pre_eta_jet,
-                                                          Pre_PT_track, Pre_eta_track)
+        jets[key], tracks[key], MET_mask = f.Selected_data(
+            d, MET_LowerBond, Pre_PT_jet, Pre_eta_jet, Pre_PT_track, Pre_eta_track)
+        gen[key] = truth[key][MET_mask]      # mismo corte que los tracks
     return jets, tracks, gen
 
-jets, tracks, gen = build_objects(all_data, MET_LowerBond, Pre_PT_jet, Pre_eta_jet,
-                             Pre_PT_track, Pre_eta_track)
+jets, tracks, gen = build_objects(all_data, truth_taus, MET_LowerBond,
+                                  Pre_PT_jet, Pre_eta_jet,
+                                  Pre_PT_track, Pre_eta_track)
+
+
+# En este punto, los Jets y Tracks están formados por información de nivel
+# recontrucción. Por otro lado, gen está formado solo por la información
+# de eventos con 2 taus-truth (status 2) y que pasaron el mismo corte de MET
+# que los eventos de nivel reconstrucción.
 
 
 # ============================================================================
@@ -171,11 +200,9 @@ print('')
 print(f"DR < {DR_TAU} and pT > {PT_TRACK} GeV")
 print('')
 
-def match_tracks_to_truth_taus(gen_ev, tracks_ev, dr_tau=DR_TAU, pt_track=PT_TRACK):
+def match_tracks_to_truth_taus(t2, tracks_ev, dr_tau=DR_TAU, pt_track=PT_TRACK):
     trk = tracks_ev[tracks_ev.pt > pt_track]
 
-    # status 2 = partícula que decayó;  PID +15 = tau-,  -15 = tau+
-    t2 = gen_ev[(abs(gen_ev.pid) == 15) & (gen_ev.status == 2)]
     tm_all, tp_all = t2[t2.pid > 0], t2[t2.pid < 0]
 
     ok = (ak.num(tm_all, axis=1) >= 1) & (ak.num(tp_all, axis=1) >= 1)

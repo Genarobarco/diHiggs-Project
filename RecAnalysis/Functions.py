@@ -103,24 +103,19 @@ def vectors_buildup(data):
                     "dz":  data["Track.DZ"]},
                     with_name="Momentum4D")
 
-    gen = ak.zip({"pt": data["Particle.PT"], "eta": data["Particle.Eta"],
-                    "phi": data["Particle.Phi"], "mass": data["Particle.Mass"],
-                    "pid": data["Particle.PID"], "status": data["Particle.Status"]},
-                    with_name="Momentum4D")
-
-    return jets, tracks, gen
+    return jets, tracks
 
 
 def Selected_data(data, MET_LB, PT_LB_jets, Eta_AB_jets, PT_LB_tracks, Eta_AB_tracks):
     MET_mask = MET_trigger(data, MET_LB)
     data_selected = data[MET_mask]
 
-    jets, tracks, gen = vectors_buildup(data_selected)
+    jets, tracks = vectors_buildup(data_selected)
 
     jets_select   = jets[preselection_cut(jets,   PT_LB_jets,   Eta_AB_jets)]
     tracks_select = tracks[preselection_cut(tracks, PT_LB_tracks, Eta_AB_tracks)]
 
-    return jets_select, tracks_select, gen   
+    return jets_select, tracks_select, MET_mask   
 
 def Taus_and_bjets(jets):
     taus = jets[(jets['TauTag'] == 1) & (jets['BTag'] == 0)]
