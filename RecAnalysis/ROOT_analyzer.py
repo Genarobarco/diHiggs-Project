@@ -51,8 +51,9 @@ print('Loading Data...')
 
 data_to_analyse = f"{Delphes}_{Energy_label}_{BenchMark}_{process}"
 
-extracted_keys = ["Jet.PT","Jet.Eta", "Jet.Phi", "Jet.Mass", "Jet.BTag","Jet.TauTag", "MissingET.MET",
-            'Track.PT', 'Track.Eta', 'Track.Phi', 'Track.Mass', 'Track.PID', 'Track.DZ', 'Track.D0', 'Track.Charge']
+extracted_keys = ["Particle.PID", "Particle.Status", "Particle.PT", "Particle.Eta", "Particle.Phi", "Particle.Mass",
+                "Jet.PT","Jet.Eta", "Jet.Phi", "Jet.Mass", "Jet.BTag","Jet.TauTag", "MissingET.MET",
+                'Track.PT', 'Track.Eta', 'Track.Phi', 'Track.Mass', 'Track.PID', 'Track.DZ', 'Track.D0', 'Track.Charge']
 
 def data_loader(rutas):
     return {key: up.concatenate(f"{path}:Delphes", extracted_keys)
@@ -133,13 +134,13 @@ os.makedirs(SubFolder_Tracks, exist_ok=True)
 
 
 def build_objects(data, MET_LowerBond, Pre_PT_jet, Pre_eta_jet, Pre_PT_track, Pre_eta_track):
-    jets, tracks = {}, {}
+    jets, tracks, gen = {}, {}, {}
     for key, d in data.items():
-        jets[key], tracks[key] = f.Selected_data(d, MET_LowerBond, Pre_PT_jet, Pre_eta_jet,
-                                               Pre_PT_track, Pre_eta_track)
-    return jets, tracks
+        jets[key], tracks[key], gen[key] = f.Selected_data(d, MET_LowerBond, Pre_PT_jet, Pre_eta_jet,
+                                                          Pre_PT_track, Pre_eta_track)
+    return jets, tracks, gen
 
-jets, tracks = build_objects(all_data, MET_LowerBond, Pre_PT_jet, Pre_eta_jet,
+jets, tracks, gen = build_objects(all_data, MET_LowerBond, Pre_PT_jet, Pre_eta_jet,
                              Pre_PT_track, Pre_eta_track)
 
 
@@ -155,6 +156,75 @@ print('   Track Analysis   ')
 print('====================')
 print(' ')
 
+
+# ============================================================================
+# Matching Tracks to Truth Taus
+# ============================================================================
+
+
+# ---- parámetros ----
+DR_TAU   = 0.1    # radio del cono alrededor del tau truth
+PT_TRACK = 1    # umbral mínimo de pT de los tracks [GeV]
+
+print(f"Matching Tracks to Truth Taus with:")
+print('')
+print(f"DR < {DR_TAU} and pT > {PT_TRACK} GeV")
+print('')
+
+def match_tracks_to_truth_taus(gen_ev, tracks_ev, dr_tau=DR_TAU, pt_track=PT_TRACK):
+    trk = tracks_ev[tracks_ev.pt > pt_track]
+
+    # status 2 = partícula que decayó;  PID +15 = tau-,  -15 = tau+
+    t2 = gen_ev[(abs(gen_ev.pid) == 15) & (gen_ev.status == 2)]
+    tm_all, tp_all = t2[t2.pid > 0], t2[t2.pid < 0]
+
+    ok = (ak.num(tm_all, axis=1) >= 1) & (ak.num(tp_all, axis=1) >= 1)
+    taum, taup, trk = tm_all[ok][:, -1], tp_all[ok][:, -1], trk[ok]
+
+    en_m = taum.deltaR(trk) < dr_tau
+    en_p = taup.deltaR(trk) < dr_tau
+
+    return {"taum": taum, "taup": taup, "tracks": trk,
+            "en_taum": en_m, "en_taup": en_p,
+            "tracks_taum": trk[en_m], "tracks_taup": trk[en_p],
+            "tracks_taus": trk[en_m | en_p],
+            "n_m": ak.num(trk[en_m], axis=1),
+            "n_p": ak.num(trk[en_p], axis=1),
+            "ok": ok}
+
+Tracks_truthTaus = {key: match_tracks_to_truth_taus(gen[key], tracks[key]) for key in gen}
+
+for key, m in Tracks_truthTaus.items():
+    print(f"{key}: ok {ak.sum(m['ok'])}/{len(m['ok'])}  "
+          f"prongs- {np.bincount(ak.to_numpy(m['n_m']), minlength=5)[:5]}  "
+          f"prongs+ {np.bincount(ak.to_numpy(m['n_p']), minlength=5)[:5]}")
+
+bines = np.arange(-0.5, 8.5, 1)
+
+fig, axes = plt.subplots(1, 2, figsize=(13, 5.5), sharey=True)
+
+for ax, campo, lab in [(axes[0], "n_m", r"$\tau^-$ truth"),
+                       (axes[1], "n_p", r"$\tau^+$ truth")]:
+    for key, m in Tracks_truthTaus.items():
+        a = ak.to_numpy(m[campo])
+        ax.hist(a, bins=bines, histtype="step", linewidth=2, density=True,
+                label=f"{key}  (N={len(a)}, 1p {100*(a==1).mean():.0f}%, "
+                      f"3p {100*(a==3).mean():.0f}%)")
+        
+    ax.text(0.97, 0.87, fr"$\Delta R < {DR_TAU}$, $p_T^{{track}} > {PT_TRACK}$ GeV",
+         ha="right", va="top", fontsize=9, family="DejaVu Serif", transform=ax.transAxes)
+    ax.set_title(lab, fontsize=13)
+    ax.set_xlabel("Tracks en el cono")
+    ax.set_xticks(range(0, 8))
+    ax.grid(alpha=0.3)
+
+axes[0].set_ylabel("Fracción de eventos")
+axes[0].legend(fontsize=8, loc="upper right")
+
+plt.tight_layout(rect=(0, 0, 1, 0.93))
+plt.savefig(f"{SubFolder_Tracks}/Prongs_truth_matched.png", dpi=300)
+plt.close()
+
 # ============================================================================
 # Eta, Phi and PT
 # ============================================================================
@@ -166,9 +236,14 @@ pt_data = {key: ak.to_numpy(ak.flatten(tracks[key].pt)) for key in tracks}
 eta_data = {key: ak.to_numpy(ak.flatten(tracks[key].eta)) for key in tracks}
 phi_data = {key: ak.to_numpy(ak.flatten(tracks[key].phi)) for key in tracks}
 
-lim_inf_pt, lim_sup_pt, p_debajo_pt, p_dentro_pt, p_encima_pt = f.calculo_rangos(0, 100, list(MET_data.values()))
-lim_inf_eta, lim_sup_eta, p_debajo_eta, p_dentro_eta, p_encima_eta = f.calculo_rangos(-5,5, list(eta_data.values()))
-lim_inf_phi, lim_sup_phi, p_debajo_phi, p_dentro_phi, p_encima_phi = f.calculo_rangos(-3.2,3.2, list(phi_data.values()))
+
+pt_data_taus = {key: ak.to_numpy(ak.flatten(Tracks_truthTaus[key]["tracks_taus"].pt)) for key in Tracks_truthTaus}
+eta_data_taus = {key: ak.to_numpy(ak.flatten(Tracks_truthTaus[key]["tracks_taus"].eta)) for key in Tracks_truthTaus}
+phi_data_taus = {key: ak.to_numpy(ak.flatten(Tracks_truthTaus[key]["tracks_taus"].phi)) for key in Tracks_truthTaus}
+
+lim_inf_pt, lim_sup_pt, p_debajo_pt, p_dentro_pt, p_encima_pt = calculo_rangos(0, 100, list(MET_data.values()))
+lim_inf_eta, lim_sup_eta, p_debajo_eta, p_dentro_eta, p_encima_eta = calculo_rangos(-5,5, list(eta_data.values()))
+lim_inf_phi, lim_sup_phi, p_debajo_phi, p_dentro_phi, p_encima_phi = calculo_rangos(-3.2,3.2, list(phi_data.values()))
 
 texto_pt = (f"Debajo de {lim_inf_pt} GeV : {p_debajo_pt:.2f}%\n"f"Dentro del rango : {p_dentro_pt:.2f}%\n"f"Encima de {lim_sup_pt} GeV : {p_encima_pt:.2f}%")
 texto_eta = (f"Debajo de {lim_inf_eta}: {p_debajo_eta:.2f}%\n"f"Dentro del rango : {p_dentro_eta:.2f}%\n"f"Encima de {lim_sup_eta}: {p_encima_eta:.2f}%")
@@ -179,15 +254,17 @@ kw = dict(bins=50, density=True, histtype="step", linewidth=2)
 
 fig, axes = plt.subplots(1, 3, figsize=(18,6), sharey=True)
 
-
 for i, (key, pt) in enumerate(pt_data.items()):
         axes[0].hist(pt, range=(lim_inf_pt, lim_sup_pt), **kw, label=f"{key}-Tracks")
+        axes[0].hist(pt_data_taus[key], range=(lim_inf_pt, lim_sup_pt), **kw, label=f"{key} Truth-Tau Tracks")
 
 for j, (key, eta) in enumerate(eta_data.items()):
         axes[1].hist(eta, range=(lim_inf_eta, lim_sup_eta), **kw, label=f"{key}-Tracks")
+        axes[1].hist(eta_data_taus[key], range=(lim_inf_eta, lim_sup_eta), **kw, label=f"{key} Truth-Tau Tracks")
 
 for k, (key, phi) in enumerate(phi_data.items()):
         axes[2].hist(phi, range=(lim_inf_phi, lim_sup_phi), **kw, label=f"{key}-Tracks")
+        axes[2].hist(phi_data_taus[key], range=(lim_inf_phi, lim_sup_phi), **kw, label=f"{key} Truth-Tau Tracks")
         
 axes[0].text(0.98, 0.97,texto_pt,transform=axes[0].transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
 axes[0].set_ylabel("Normalized Events")
@@ -200,7 +277,7 @@ axes[1].legend(loc = 'center right')
 
 axes[2].text(0.98, 0.97,texto_phi,transform=axes[2].transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
 axes[2].xaxis.set_major_locator(MultipleLocator(np.pi / 2))
-axes[2].xaxis.set_major_formatter(FuncFormatter(f.pi_formatter))
+axes[2].xaxis.set_major_formatter(FuncFormatter(pi_formatter))
 axes[2].set_xlabel(r"$\phi$")
 axes[2].legend(loc = 'center right')
 
@@ -225,28 +302,42 @@ print('Plotting 2D Distributions tracks eta and phi')
 list_keys = list(rutas.keys())
 rango = [[-4, 4], [-4, 4]]
 
-fig, axes = plt.subplots(1, len(list_keys), figsize=(5.5*len(list_keys), 6),
+filas = [("Todos los tracks", eta_data,      phi_data),
+         ("Matcheados a taus truth", eta_data_taus, phi_data_taus)]
+
+fig, axes = plt.subplots(2, len(list_keys),
+                         figsize=(5.5*len(list_keys), 11),
                          sharex=True, sharey=True, squeeze=False)
-axes = axes[0]
 
-for ax, key in zip(axes, list_keys):
-    x, y = eta_data[key], phi_data[key]
-    h = ax.hist2d(x, y, bins=50, range=rango, cmap="magma", cmin=1)
+for r, (titulo_fila, eta_d, phi_d) in enumerate(filas):
+    # norma comun a la fila: mismo color = mismo numero de tracks
+    vmax = max(np.histogram2d(eta_d[k], phi_d[k], bins=50, range=rango)[0].max()
+               for k in list_keys)
+    norm = LogNorm(vmin=1, vmax=max(vmax, 2))
 
-    ax.set_facecolor("black")
-    ax.set_title(key, fontsize=12)
-    ax.set_xlabel(r"$\eta$", fontsize=13)
-    ax.text(0.02, 0.97, f"N = {len(x)}", transform=ax.transAxes,
-            ha="left", va="top", fontsize=9, color="white")
-    ax.text(0.97, 0.99, Data_text_ID_jets, transform=ax.transAxes,
-            ha="right", va="top", fontsize=9, family="DejaVu Serif", color="white")
+    for c, key in enumerate(list_keys):
+        ax = axes[r, c]
+        x, y = eta_d[key], phi_d[key]
+        h = ax.hist2d(x, y, bins=50, range=rango, cmap="magma", norm=norm, cmin=1)
 
-axes[0].set_ylabel(r"$\phi$", fontsize=13)
+        ax.set_facecolor("black")
+        ax.grid(False)
+        if r == 0:
+            ax.set_title(key, fontsize=12)
+        if r == len(filas) - 1:
+            ax.set_xlabel(r"$\eta$", fontsize=13)
+        ax.text(0.02, 0.97, f"N = {len(x)}", transform=ax.transAxes,
+                ha="left", va="top", fontsize=9, color="white")
 
-fig.colorbar(h[3], ax=axes, label="Tracks", fraction=0.025, pad=0.02)
+        ax.text(0.97, 0.995, Data_text_ID_jets, ha="right", va="top",
+         fontsize=9, family="DejaVu Serif", transform=ax.transAxes, color="white")
 
-plt.savefig(f"{SubFolder_Tracks}/2D-eta_phi_por_muestra.png", dpi=300)
-plt.show()
+    axes[r, 0].set_ylabel(f"{titulo_fila}\n" + r"$\phi$", fontsize=11)
+    fig.colorbar(h[3], ax=axes[r, :].tolist(), label="Tracks",
+                 fraction=0.025, pad=0.02)
+
+plt.savefig(f"{SubFolder_Tracks}/2D-eta_phi_todos_vs_matched.png", dpi=300)
+plt.close()
 
 
 # ============================================================================
@@ -258,10 +349,13 @@ print('Plotting Vertex Parameters')
 d0_data = {key: ak.to_numpy(ak.flatten(tracks[key].d0)) for key in tracks}
 dz_data = {key: ak.to_numpy(ak.flatten(tracks[key].dz)) for key in tracks}
 
+d0_truthtau_tracks = {key: ak.to_numpy(ak.flatten(Tracks_truthTaus[key]["tracks_taus"].d0)) for key in Tracks_truthTaus}
+dz_truthtau_tracks = {key: ak.to_numpy(ak.flatten(Tracks_truthTaus[key]["tracks_taus"].dz)) for key in Tracks_truthTaus}
+
 kw = dict(bins=50, density=True, histtype="step", linewidth=2)
 
-lim_inf_d0, lim_sup_d0, p_debajo_d0, p_dentro_d0, p_encima_d0 = f.calculo_rangos(-6,6, list(d0_data.values()))
-lim_inf_dz, lim_sup_dz, p_debajo_dz, p_dentro_dz, p_encima_dz = f.calculo_rangos(-30,30, list(dz_data.values()))
+lim_inf_d0, lim_sup_d0, p_debajo_d0, p_dentro_d0, p_encima_d0 = calculo_rangos(-6,6, list(d0_data.values()))
+lim_inf_dz, lim_sup_dz, p_debajo_dz, p_dentro_dz, p_encima_dz = calculo_rangos(-30,30, list(dz_data.values()))
 
 texto0 = (f"Debajo de {lim_inf_d0} mm : {p_debajo_d0:.2f}%\n"f"Dentro del rango : {p_dentro_d0:.2f}%\n"f"Encima de {lim_sup_d0} mm : {p_encima_d0:.2f}%")
 texto1 = (f"Debajo de {lim_inf_dz} mm : {p_debajo_dz:.2f}%\n"f"Dentro del rango : {p_dentro_dz:.2f}%\n"f"Encima de {lim_sup_dz} mm : {p_encima_dz:.2f}%")
@@ -273,9 +367,11 @@ axes[1].text(0.98, 0.97,texto1,transform=axes[1].transAxes,ha="right",va="top",b
 
 for i, (key, d0) in enumerate(d0_data.items()):
         axes[0].hist(d0, range=(lim_inf_d0, lim_sup_d0), **kw, label=f"{key}")
+        axes[0].hist(d0_truthtau_tracks[key], range=(lim_inf_d0, lim_sup_d0), **kw, label=f"{key} Truth-Tau Tracks")
 
 for j, (key, dz) in enumerate(dz_data.items()):
         axes[1].hist(dz, range=(lim_inf_dz, lim_sup_dz), **kw, label=f"{key}")
+        axes[1].hist(dz_truthtau_tracks[key], range=(lim_inf_dz, lim_sup_dz), **kw, label=f"{key} Truth-Tau Tracks")
 
 axes[0].set_xlabel(r"$d_0$ [mm]")
 axes[0].set_ylabel("Normalize Number of Tracks")
@@ -304,8 +400,9 @@ plt.close()
 print('Plotting Number of Tracks per Event')
 
 ntrk_data = {key: ak.to_numpy(ak.num(tracks[key], axis=1)) for key in tracks}
+ntrk_truthtau = {key: ak.to_numpy(ak.num(Tracks_truthTaus[key]["tracks_taus"], axis=1)) for key in Tracks_truthTaus}
 
-lim_inf_ntrk, lim_sup_ntrk, p_debajo_ntrk, p_dentro_ntrk, p_encima_ntrk = f.calculo_rangos(0,200, list(ntrk_data.values()))
+lim_inf_ntrk, lim_sup_ntrk, p_debajo_ntrk, p_dentro_ntrk, p_encima_ntrk = calculo_rangos(0,250, list(ntrk_data.values()))
 
 texto0 = (f"Debajo de {lim_inf_ntrk}: {p_debajo_ntrk:.2f}%\n"f"Dentro del rango : {p_dentro_ntrk:.2f}%\n"f"Encima de {lim_sup_ntrk} : {p_encima_ntrk:.2f}%")
 
@@ -316,7 +413,8 @@ plt.text(0.98, 0.8, Data_text_ID_tracks, transform=plt.gca().transAxes,
         ha="right", va="top", fontsize=10, family="DejaVu Serif")
 
 for i, (key, ntrk) in enumerate(ntrk_data.items()):
-        plt.hist(ntrk, bins=200, density=False, range=(lim_inf_ntrk, lim_sup_ntrk), histtype="step", linewidth=2, label=f"{key}")
+        plt.hist(ntrk, bins=250, density=False, range=(lim_inf_ntrk, lim_sup_ntrk), histtype="step", linewidth=2, label=f"All Tracks")
+        plt.hist(ntrk_truthtau[key], bins=250, density=False, range=(lim_inf_ntrk, lim_sup_ntrk), histtype="step", linewidth=2, label=f"{key} Truth-Tau Tracks")
 
 plt.xlabel(r"Number of Tracks")
 plt.ylabel("Events")
@@ -729,7 +827,7 @@ axes[0].set_ylabel(r"$p_T(bb)$ [GeV]", fontsize=13)
 fig.colorbar(h[3], ax=axes, label="Eventos", fraction=0.025, pad=0.02)
 
 fig.savefig(f"{SubFolder_Jets}/2D-PT_hpair_distribution.png", dpi=300)
-plt.show()
+plt.close()
 
 
 # ============================================================================
@@ -761,4 +859,4 @@ plt.grid(alpha=0.3)
 
 plt.tight_layout()
 plt.savefig(f"{SubFolder_Jets}/DR_Htautau_Hbb.png", dpi=300)
-plt.show()
+plt.close()
