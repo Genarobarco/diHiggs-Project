@@ -73,29 +73,6 @@ def calculo_rangos(lim_inf, lim_sup, data):
 
         return print("Error: data debe ser una lista de arrays de datos.")
 
-def vectors_buildup(data):
-    jets = ak.zip({
-        "pt": data["Jet.PT"],
-        "eta": data["Jet.Eta"],
-        "phi": data["Jet.Phi"],
-        "mass": data["Jet.Mass"],
-        'TauTag': data["Jet.TauTag"],
-        'BTag': data["Jet.BTag"],
-    }, with_name="Momentum4D")
-
-    tracks = ak.zip({
-        "pt": data["Track.PT"],
-        "eta": data["Track.Eta"],
-        "phi": data["Track.Phi"],
-        "mass": data["Track.Mass"],
-        "d0":  data["Track.D0"],  
-        "dz":  data["Track.DZ"]
-    }, with_name="Momentum4D")
-
-    return jets, tracks
-
-# Selection Functions
-
 def MET_trigger(data, MET_lowerbond):
 
     MET_mask = ak.flatten(data["MissingET.MET"]) > MET_lowerbond
@@ -106,22 +83,44 @@ def preselection_cut(vec, Pt_lowerBond, Eta_absoluteBond):
     cinematic_mask = (vec.pt > Pt_lowerBond) & (abs(vec.eta) < Eta_absoluteBond)
     return cinematic_mask
 
+
+def vectors_buildup(data):
+
+    jets = ak.zip({
+        "pt": data["Jet.PT"],
+        "eta": data["Jet.Eta"],
+        "phi": data["Jet.Phi"],
+        "mass": data["Jet.Mass"],
+        'TauTag': data["Jet.TauTag"],
+        'BTag': data["Jet.BTag"],
+    }, with_name="Momentum4D")
+
+    tracks = ak.zip({"pt": data["Track.PT"], "eta": data["Track.Eta"],
+                    "phi": data["Track.Phi"],
+                    "mass": ak.zeros_like(data["Track.PT"]),
+                    "charge": data["Track.Charge"],
+                    "d0":  data["Track.D0"],
+                    "dz":  data["Track.DZ"]},
+                    with_name="Momentum4D")
+
+    gen = ak.zip({"pt": data["Particle.PT"], "eta": data["Particle.Eta"],
+                    "phi": data["Particle.Phi"], "mass": data["Particle.Mass"],
+                    "pid": data["Particle.PID"], "status": data["Particle.Status"]},
+                    with_name="Momentum4D")
+
+    return jets, tracks, gen
+
+
 def Selected_data(data, MET_LB, PT_LB_jets, Eta_AB_jets, PT_LB_tracks, Eta_AB_tracks):
-
     MET_mask = MET_trigger(data, MET_LB)
-
     data_selected = data[MET_mask]
 
-    # Construyo los jets, con su cuadrivector y los BTag y tautag
+    jets, tracks, gen = vectors_buildup(data_selected)
 
-    jets, tracks = vectors_buildup(data_selected)
+    jets_select   = jets[preselection_cut(jets,   PT_LB_jets,   Eta_AB_jets)]
+    tracks_select = tracks[preselection_cut(tracks, PT_LB_tracks, Eta_AB_tracks)]
 
-    jets_preselected = preselection_cut(jets, PT_LB_jets, Eta_AB_jets)
-    tracks_preselected = preselection_cut(tracks, PT_LB_tracks, Eta_AB_tracks)
-
-    jets_select, tracks_select = jets[jets_preselected], tracks[tracks_preselected]
-
-    return jets_select, tracks_select
+    return jets_select, tracks_select, gen   
 
 def Taus_and_bjets(jets):
     taus = jets[(jets['TauTag'] == 1) & (jets['BTag'] == 0)]
@@ -141,12 +140,16 @@ def kinematic_hierarchical_order(taus, bjets):
     return tau1, tau2, b1, b2, taus_cut, bjets_cut
 
 def PT_and_IM_of_products(tau1, tau2, b1, b2):
-    M_tautau = (tau1+tau2).mass
-    M_bb     = (b1+b2).mass
+    
+    h_tautau_vec = tau1+tau2
+    h_bb_vec = b1+b2
+    
+    M_tautau = h_tautau_vec.mass
+    M_bb     = h_bb_vec.mass
     M_hh     = (tau1+tau2+b1+b2).mass
 
-    PT_tautau = (tau1+tau2).pt
-    PT_bb     = (b1+b2).pt
+    PT_tautau = h_tautau_vec.pt
+    PT_bb     = h_bb_vec.pt
     PT_hh     = (tau1+tau2+b1+b2).pt
 
     tuple_tautau = (M_tautau, PT_tautau)
