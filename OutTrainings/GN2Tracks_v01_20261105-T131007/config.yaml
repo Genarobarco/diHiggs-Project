@@ -1,0 +1,243 @@
+# lightning.pytorch==2.6.1
+seed_everything: 42
+trainer:
+  accelerator: gpu
+  strategy: auto
+  devices: 1
+  num_nodes: 1
+  precision: null
+  logger:
+    class_path: lightning.pytorch.loggers.CometLogger
+    init_args:
+      api_key: null
+      workspace: null
+      project: salt
+      experiment_key: null
+      mode: null
+      online: null
+      prefix: null
+    dict_kwargs:
+      name: GN2Tracks_v01
+  callbacks:
+  - class_path: salt.callbacks.Checkpoint
+    init_args:
+      monitor_loss: val_jets_classification_loss
+      fname_string: val_loss
+  - class_path: salt.callbacks.PredictionWriter
+    init_args:
+      write_tracks: false
+      write_objects: false
+      half_precision: false
+      object_classes: null
+      extra_vars: null
+  - class_path: lightning.pytorch.callbacks.LearningRateMonitor
+    init_args:
+      logging_interval: null
+      log_momentum: false
+      log_weight_decay: false
+  - class_path: lightning.pytorch.callbacks.TQDMProgressBar
+    init_args:
+      refresh_rate: 50
+      process_position: 0
+      leave: false
+  - class_path: lightning.pytorch.callbacks.ModelSummary
+    init_args:
+      max_depth: 2
+  fast_dev_run: false
+  max_epochs: 50
+  min_epochs: null
+  max_steps: -1
+  min_steps: null
+  max_time: null
+  limit_train_batches: null
+  limit_val_batches: null
+  limit_test_batches: null
+  limit_predict_batches: null
+  overfit_batches: 0.0
+  val_check_interval: null
+  check_val_every_n_epoch: 1
+  num_sanity_val_steps: null
+  log_every_n_steps: 50
+  enable_checkpointing: null
+  enable_progress_bar: null
+  enable_model_summary: null
+  accumulate_grad_batches: 1
+  gradient_clip_val: null
+  gradient_clip_algorithm: null
+  deterministic: null
+  benchmark: null
+  inference_mode: true
+  use_distributed_sampler: true
+  profiler: null
+  detect_anomaly: false
+  barebones: false
+  plugins: null
+  sync_batchnorm: false
+  reload_dataloaders_every_n_epochs: 0
+  default_root_dir: /home/gbarco/DiHiggsProject/OutTrainings/GN2Tracks_v01_20261105-T131007
+  enable_autolog_hparams: true
+  model_registry: null
+model:
+  model:
+    class_path: salt.models.SaltModel
+    init_args:
+      init_nets:
+      - input_name: tracks
+        attach_global: false
+        dense_config:
+          output_size: 16
+          hidden_layers:
+          - 16
+          - 32
+          activation: SiLU
+        variables:
+          tracks:
+          - PT
+          - Eta
+          - Phi
+          - DZ
+          - D0
+        global_object: jets
+      tasks:
+        class_path: torch.nn.ModuleList
+        init_args:
+          modules:
+          - class_path: salt.models.ClassificationTask
+            init_args:
+              label: flavour_label
+              class_names:
+              - hadtaujets
+              - qcdjets
+              label_map: null
+              sample_weight: null
+              use_class_dict: true
+              name: jets_classification
+              input_name: jets
+              dense_config:
+                input_size: 16
+                output_size: 2
+                hidden_layers:
+                - 16
+                - 32
+                - 16
+                activation: SiLU
+                dropout: 0.1
+              loss:
+                class_path: torch.nn.CrossEntropyLoss
+                init_args:
+                  weight:
+                  - 1.1221014261245728
+                  - 0.901863694190979
+                  size_average: null
+                  ignore_index: -100
+                  reduce: null
+                  reduction: mean
+                  label_smoothing: 0.0
+              weight: 1.0
+      encoder:
+        class_path: salt.models.Transformer
+        init_args:
+          num_layers: 2
+          embed_dim: 16
+          out_dim: 16
+          norm: LayerNorm
+          attn_type: torch-math
+          do_final_norm: true
+          num_registers: 1
+          drop_registers: false
+          edge_embed_dim: 0
+          update_edges: false
+          mup: false
+          ls_init: null
+          drop_path: 0.0
+          dense_kwargs:
+            activation: SiLU
+            dropout: 0.1
+          attn_kwargs:
+            num_heads: 2
+          norm_type: pre
+          num_dense: 1
+      mask_decoder: null
+      pool_net:
+        class_path: salt.models.GlobalAttentionPooling
+        init_args:
+          input_size: 16
+      merge_dict: null
+      featurewise_nets: null
+  lrs_config:
+    initial: 1.0e-08
+    max: 0.001
+    end: 1.0e-08
+    pct_start: 0.1
+    weight_decay: 1.0e-05
+  norm_config:
+    norm_dict: /mnt/R5/gbarco/TrainingV01/norm_dict.yaml
+    variables:
+      tracks:
+      - PT
+      - Eta
+      - Phi
+      - DZ
+      - D0
+    global_object: jets
+    input_map:
+      jets: jets
+      tracks: tracks
+  mup_config: null
+  loss_mode: wsum
+  optimizer: AdamW
+data:
+  train_file: /mnt/R5/gbarco/TrainingV01/pp_output_train.h5
+  val_file: /mnt/R5/gbarco/TrainingV01/pp_output_val.h5
+  batch_size: 10000
+  num_workers: 12
+  num_train: -1
+  num_val: -1
+  num_test: -1
+  move_files_temp: null
+  class_dict: /home/gbarco/DiHiggsProject/OutTrainings/GN2Tracks_v01_20261105-T131007/class_dict.yaml
+  test_file: /mnt/R5/gbarco/TrainingV01/pp_output_test.h5
+  train_vds_path: null
+  val_vds_path: null
+  test_vds_path: null
+  test_suff: null
+  pin_memory: true
+  persistent_workers: true
+  prefetch_factor: 2
+  multiprocessing_context: null
+  config_s3: null
+  norm_dict: /home/gbarco/DiHiggsProject/OutTrainings/GN2Tracks_v01_20261105-T131007/norm_dict.yaml
+  variables:
+    tracks:
+    - PT
+    - Eta
+    - Phi
+    - DZ
+    - D0
+  labeller_config: null
+  labels:
+    jets:
+    - flavour_label
+  mf_config: null
+  input_map:
+    jets: jets
+    tracks: tracks
+  num_inputs:
+    tracks: 50
+  non_finite_to_num: false
+  global_object: jets
+  parameters: null
+  selections: null
+  ignore_finite_checks: false
+  recover_malformed: false
+  transforms: null
+name: GN2Tracks_v01
+force: false
+tag: false
+compile: false
+overwrite_config: false
+log_suffix: null
+optimizer: null
+lr_scheduler: null
+ckpt_path: null
+weights_only: null

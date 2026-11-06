@@ -17,7 +17,7 @@ tables:
 #      - 'MET_Phi': 'GenMissingET.Phi'
 
   - name: 'tracks'
-    n_rows: 200
+    n_rows: 250
     prefixes: 'Track'
     separator: '.'
     cuts:
@@ -28,14 +28,18 @@ tables:
       - Phi
       - DZ
       - D0
-      #- FromBLead
-      #- FromBSubl
-      #- FromTauLead
-      #- FromTauSubl
 
-#      - name: origin
-#        type: int
-#        values:
-          # No idea if this is correct! Maybe PID has something else? Or is related to the actual final particle? (e.g. the pions instead of the tau?)
-#          'abs(PID) == 5': 1 # B-jet
-#          'abs(PID) == 15': 2 # Tau
+  - name: 'Jets'
+    n_rows: 10
+    prefixes: 'Jet'
+    separator: '.'
+    cuts:
+      - 'PT > 20'
+    columns:
+      - PT
+      - Eta
+      - Phi
+      - Mass
+      - BTag
+      - TauTag
+

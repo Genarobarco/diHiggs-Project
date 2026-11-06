@@ -1,0 +1,41 @@
+train_file: /mnt/R5/gbarco/TrainingV01/pp_output_train.h5
+val_file: /mnt/R5/gbarco/TrainingV01/pp_output_val.h5
+num_train: 635179
+num_val: 79396
+batch_size: 10000
+trainable_params: 7171
+num_gpus: 1
+gpu_ids:
+- 0
+num_workers: 12
+available_train: 635179
+num_unique_jets_train: null
+dsids: null
+jet_counts_train: null
+pp_config_train: null
+object_classes:
+  0: n
+  1: o
+  2: t
+  3: ' '
+  4: a
+  5: v
+  6: a
+  7: i
+  8: l
+  9: a
+  10: b
+  11: l
+  12: e
+available_val: 79396
+num_unique_jets_val: null
+jet_counts_val: null
+pp_config_val: null
+salt_hash: null
+out_dir: /home/gbarco/DiHiggsProject/OutTrainings/GN2Tracks_v01_20261105-T131007
+log_url: https://www.comet.com/tautrigger-gbarco/salt/42bcec8ced564b4ba488f1477fdfe363
+timestamp: GN2Tracks_v01_20261105-T131007
+torch_version: 2.9.1+cu128
+lightning_version: 2.6.1
+cuda_version: '12.8'
+hostname: jupiter
