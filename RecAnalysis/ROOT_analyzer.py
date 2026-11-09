@@ -55,21 +55,26 @@ reco_keys = ["Jet.PT", "Jet.Eta", "Jet.Phi", "Jet.Mass", "Jet.BTag", "Jet.TauTag
              "MissingET.MET",
              "Track.PT", "Track.Eta", "Track.Phi", "Track.DZ", "Track.D0", "Track.Charge"]
 
-truth_keys = ["Particle.PID", "Particle.Status", "Particle.PT",
-              "Particle.Eta", "Particle.Phi", "Particle.Mass"]
+truth_keys = ["Particle.PID", "Particle.Status",
+              "Particle.Px", "Particle.Py", "Particle.Pz", "Particle.E",
+              "Particle.X", "Particle.Y", "Particle.Z"]
 
 
 def load_truth_taus(path, step_size="500 MB"):
-    """Lee Particle por lotes y conserva solo los taus (status 2)."""
+    """Lee Particle por lotes y conserva solo los taus (status 2),
+    con su cuadrivector cartesiano y su vertice."""
     trozos = []
     for batch in up.iterate(f"{path}:Delphes", truth_keys, step_size=step_size):
         es_tau = (abs(batch["Particle.PID"]) == 15) & (batch["Particle.Status"] == 2)
         trozos.append(ak.zip({
-            "pt":   batch["Particle.PT"][es_tau],
-            "eta":  batch["Particle.Eta"][es_tau],
-            "phi":  batch["Particle.Phi"][es_tau],
-            "mass": batch["Particle.Mass"][es_tau],
-            "pid":  batch["Particle.PID"][es_tau],
+            "px":  batch["Particle.Px"][es_tau],
+            "py":  batch["Particle.Py"][es_tau],
+            "pz":  batch["Particle.Pz"][es_tau],
+            "E":   batch["Particle.E"][es_tau],
+            "pid": batch["Particle.PID"][es_tau],
+            "vx":  batch["Particle.X"][es_tau],
+            "vy":  batch["Particle.Y"][es_tau],
+            "vz":  batch["Particle.Z"][es_tau],
         }, with_name="Momentum4D"))
     return ak.concatenate(trozos)
 
@@ -132,6 +137,7 @@ print('Building Jets and Tracks')
 
 SubFolder_Jets = f"{Global_folder_path}/Jets/MET{MET_LowerBond}_PT{Pre_PT_jet}_Eta{Pre_eta_jet}"
 SubFolder_Tracks = f"{Global_folder_path}/Tracks/MET{MET_LowerBond}_PT{Pre_PT_track}_Eta{Pre_eta_track}"
+SubFolder_Truth = f"{Global_folder_path}/Truth/MET{MET_LowerBond}_PT{Pre_PT_track}_Eta{Pre_eta_track}"
 
 Data_text_ID_jets = ("BenchMark: " f"{BenchMark}" "\n"
                 f"Process: {process}" "\n"
@@ -152,6 +158,7 @@ Data_text_ID_tracks = ("BenchMark: " f"{BenchMark}" "\n"
 
 os.makedirs(SubFolder_Jets, exist_ok=True)
 os.makedirs(SubFolder_Tracks, exist_ok=True)
+os.makedirs(SubFolder_Truth, exist_ok=True)
 
 def build_objects(data, truth, MET_LowerBond, Pre_PT_jet, Pre_eta_jet,
                   Pre_PT_track, Pre_eta_track):
@@ -171,6 +178,95 @@ jets, tracks, gen = build_objects(all_data, truth_taus, MET_LowerBond,
 # recontrucción. Por otro lado, gen está formado solo por la información
 # de eventos con 2 taus-truth (status 2) y que pasaron el mismo corte de MET
 # que los eventos de nivel reconstrucción.
+
+
+# ============================================================================
+# ===                                                                      ===
+# ===                         Truth Analysis                               ===
+# ===                                                                      ===
+# ============================================================================
+
+print(' ')
+print('====================')
+print('   Truth Analysis   ')
+print('====================')
+print(' ')
+
+
+# ============================================================================
+# Decay Vertex Parameters
+# ============================================================================
+
+# Selecciono los taus finales que decaen:
+
+taus_gen = {key: gen[key][(abs(gen[key].pid) == 15) & (gen[key].status == 2)] for key in gen}
+
+# Plot con los parámetros de los vertices a truth-level
+for key, taus_gen in taus_gen.items():
+
+    X = ak.to_numpy(ak.flatten(taus_gen.vx))
+    Y = ak.to_numpy(ak.flatten(taus_gen.vy))
+    Z = ak.to_numpy(ak.flatten(taus_gen.vz))
+    R = np.sqrt(X**2 + Y**2)
+
+    fig = plt.figure(figsize=(16, 9))
+
+    # --- fila 1: las tres coordenadas ---
+    for i, (datos, lab, rango) in enumerate([(X, "x", (-10, 10)),
+                                            (Y, "y", (-10, 10)),
+                                            (Z, "z", (-50, 50))]):
+        ax = fig.add_subplot(2, 3, i + 1)
+        ax.hist(datos, bins=40, range=rango, histtype="step", linewidth=2, density=True)
+        ax.set_yscale("log")
+        ax.set_xlabel(f"{lab} [mm]")
+        ax.grid(alpha=0.3)
+        ax.text(0.97, 0.97, f"mediana = {np.median(datos):.3f}\n"
+                            f"RMS = {datos.std():.3f}",
+                transform=ax.transAxes, ha="right", va="top", fontsize=9,
+                bbox=dict(boxstyle="round", facecolor="white", alpha=0.85))
+        ax.text(0.1, 0.97, f"{key}",
+                        transform=ax.transAxes, ha="left", va="top", fontsize=9,
+                        bbox=dict(boxstyle="round", facecolor="white", alpha=0.85))
+    fig.axes[0].set_ylabel("Normalized Taus")
+
+    # --- plano transverso x-y ---
+    ax = fig.add_subplot(2, 3, 4)
+    h = ax.hist2d(X, Y, bins=40, range=[[-10, 10], [-10, 10]],
+                cmap="magma", norm=LogNorm(), cmin=1)
+    ax.text(0.1, 0.97, f"{key}",
+                            transform=ax.transAxes, ha="left", va="top", fontsize=9,
+                            bbox=dict(boxstyle="round", color="white", alpha=0.85))
+    ax.set_facecolor("black"); ax.grid(False)
+    ax.set_xlabel("x [mm]"); ax.set_ylabel("y [mm]")
+    ax.set_aspect("equal")
+    ax.set_title("Plano transverso")
+    fig.colorbar(h[3], ax=ax, label="Taus")
+
+    # --- vista longitudinal z-r ---
+    ax = fig.add_subplot(2, 3, 5)
+    h = ax.hist2d(Z, R, bins=40, range=[[-50, 50], [0, 10]],
+                cmap="magma", norm=LogNorm(), cmin=1)
+    ax.text(0.1, 0.97, f"{key}",
+                                transform=ax.transAxes, ha="left", va="top", fontsize=9,
+                                bbox=dict(boxstyle="round", color="white", alpha=0.85))
+    ax.set_facecolor("black"); ax.grid(False)
+    ax.set_xlabel("z [mm]"); ax.set_ylabel("r [mm]")
+    ax.set_title("Vista longitudinal")
+    fig.colorbar(h[3], ax=ax, label="Taus")
+
+    # --- radio transverso ---
+    ax = fig.add_subplot(2, 3, 6)
+    ax.hist(R, bins=40, range=(0, 10), histtype="step", linewidth=2, density=True)
+    ax.text(0.97, 0.97, f"{key}",
+                            transform=ax.transAxes, ha="right", va="top", fontsize=9,
+                            bbox=dict(boxstyle="round", facecolor="white", alpha=0.85))
+    ax.set_yscale("log")
+    ax.set_xlabel("r [mm]"); ax.set_ylabel("Normalized Taus")
+    ax.grid(alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig(f"{SubFolder_Truth}/Tau_decay_vertex.png", dpi=300)
+    plt.close()
 
 
 # ============================================================================
