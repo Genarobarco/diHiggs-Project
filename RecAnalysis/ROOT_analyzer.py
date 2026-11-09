@@ -536,8 +536,8 @@ plt.text(0.98, 0.8, Data_text_ID_tracks, transform=plt.gca().transAxes,
         ha="right", va="top", fontsize=10, family="DejaVu Serif")
 
 for i, (key, ntrk) in enumerate(ntrk_data.items()):
-        plt.hist(ntrk, bins=250, density=False, range=(lim_inf_ntrk, lim_sup_ntrk), histtype="step", linewidth=2, label=f"All Tracks")
-        plt.hist(ntrk_truthtau[key], bins=250, density=False, range=(lim_inf_ntrk, lim_sup_ntrk), histtype="step", linewidth=2, label=f"{key} Truth-Tau Tracks")
+        plt.hist(ntrk, bins=250, density=True, range=(lim_inf_ntrk, lim_sup_ntrk), histtype="step", linewidth=2, label=f"All Tracks")
+        plt.hist(ntrk_truthtau[key], bins=250, density=True, range=(lim_inf_ntrk, lim_sup_ntrk), histtype="step", linewidth=2, label=f"{key} Truth-Tau Tracks")
 
 plt.xlabel(r"Number of Tracks")
 plt.ylabel("Events")
