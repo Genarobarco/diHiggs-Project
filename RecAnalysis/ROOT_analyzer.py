@@ -17,7 +17,8 @@ vec.register_awkward()
 # Parameters
 # ============================================================================
 
-saving_path = '/home/gbarco/DiHiggsProject/RecAnalysis/'
+# saving_path = '/home/gbarco/DiHiggsProject/RecAnalysis/'
+saving_path = 'RecAnalysis/'
 
 # MET Selection
 
@@ -39,9 +40,13 @@ process = "gg-hhj"
 # Paths
 
 rutas = {
-    "LQ - gg > hhj": "/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_*_delphes_events.root",
-    "BG - pp > tthj": "/mnt/R5/gbarco/pp_tthj_1800k/ROOTs/output_pp_tthj_h-tata_1800k_104_*_delphes_events.root", 
+    "Prueba": "/home/usuario/Madgraph/projects/gg_hh-LQs/plusjet/output_ggHH_bbtata_BP1_80_*_delphes_events.root",
 }
+
+# rutas = {
+#     "LQ - gg > hhj": "/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_*_delphes_events.root",
+#     "BG - pp > tthj": "/mnt/R5/gbarco/pp_tthj_1800k/ROOTs/output_pp_tthj_h-tata_1800k_104_*_delphes_events.root", 
+# }
 
 # ============================================================================
 # Data Loading
@@ -72,6 +77,7 @@ def load_truth_taus(path, step_size="500 MB"):
             "pz":  batch["Particle.Pz"][es_tau],
             "E":   batch["Particle.E"][es_tau],
             "pid": batch["Particle.PID"][es_tau],
+            "status": batch["Particle.Status"][es_tau],
             "vx":  batch["Particle.X"][es_tau],
             "vy":  batch["Particle.Y"][es_tau],
             "vz":  batch["Particle.Z"][es_tau],
