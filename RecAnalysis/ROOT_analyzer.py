@@ -22,7 +22,7 @@ saving_path = 'RecAnalysis/'
 
 # MET Selection
 
-MET_LowerBond = 100     # GeV
+MET_LowerBond = 0     # GeV
 
 # Jets preselection cuts
 Pre_PT_jet = 20       # GeV
@@ -162,6 +162,13 @@ Data_text_ID_tracks = ("BenchMark: " f"{BenchMark}" "\n"
                     rf"$|\eta| < {Pre_eta_track}$")
 
 
+Data_text_ID_truth = ( "TRUTH  Analysis" "\n"
+                    "BenchMark: " f"{BenchMark}" "\n"
+                    f"Process: {process}" "\n"
+                    fr"Delphes: {Delphes}" "\n"
+                    r"$\sqrt{s}$" f" = {Energy_label}" "\n"
+                    fr"MET > {MET_LowerBond} GeV")
+
 os.makedirs(SubFolder_Jets, exist_ok=True)
 os.makedirs(SubFolder_Tracks, exist_ok=True)
 os.makedirs(SubFolder_Truth, exist_ok=True)
@@ -203,26 +210,45 @@ print(' ')
 # Decay Vertex Parameters
 # ============================================================================
 
+print('Plotting Vertex Parameters of Taus to decay')
+
 # Selecciono los taus finales que decaen:
 
 taus_gen = {key: gen[key][(abs(gen[key].pid) == 15) & (gen[key].status == 2)] for key in gen}
+TwoTaus_gen = {key: taus_gen[key][(ak.num(taus_gen[key], axis=1) >= 2)] for key in taus_gen}
+
+PT_taus_to_decay = {key: ak.to_numpy(ak.flatten(taus.pt)) for key, taus in TwoTaus_gen.items()}
+E_taus_to_decay = {key: ak.to_numpy(ak.flatten(taus.E)) for key, taus in TwoTaus_gen.items()}
+
+n_taus_per_event = {key: ak.num(TwoTaus_gen[key], axis=1) for key in TwoTaus_gen}
+n_total = {key: ak.sum(n_taus_per_event[key]) for key in n_taus_per_event}
 
 # Plot con los parámetros de los vertices a truth-level
-for key, taus_gen in taus_gen.items():
+for key, taus in TwoTaus_gen.items():
 
-    X = ak.to_numpy(ak.flatten(taus_gen.vx))
-    Y = ak.to_numpy(ak.flatten(taus_gen.vy))
-    Z = ak.to_numpy(ak.flatten(taus_gen.vz))
+    N_total = n_total[key]
+
+    X = ak.to_numpy(ak.flatten(taus.vx))
+    Y = ak.to_numpy(ak.flatten(taus.vy))
+    Z = ak.to_numpy(ak.flatten(taus.vz))
+
     R = np.sqrt(X**2 + Y**2)
+
+    wx = np.full(len(X), 1.0 / N_total)
+    wy = np.full(len(Y), 1.0 / N_total)
+    wz = np.full(len(Z), 1.0 / N_total)
+    wR = np.full(len(R), 1.0 / N_total)
+    wPT = np.full(len(PT_taus_to_decay[key]), 1.0 / N_total)
+    wE = np.full(len(E_taus_to_decay[key]), 1.0 / N_total)
 
     fig = plt.figure(figsize=(16, 9))
 
     # --- fila 1: las tres coordenadas ---
-    for i, (datos, lab, rango) in enumerate([(X, "x", (-10, 10)),
-                                            (Y, "y", (-10, 10)),
-                                            (Z, "z", (-50, 50))]):
+    for i, (datos, lab, rango, w) in enumerate([(X, "x", (-10, 10), wx),
+                                            (Y, "y", (-10, 10), wy),
+                                            (Z, "z", (-50, 50), wz)]):
         ax = fig.add_subplot(2, 3, i + 1)
-        ax.hist(datos, bins=40, range=rango, histtype="step", linewidth=2, density=True)
+        ax.hist(datos, bins=40, range=rango, histtype="step", linewidth=2, weights=w)
         ax.set_yscale("log")
         ax.set_xlabel(f"{lab} [mm]")
         ax.grid(alpha=0.3)
@@ -230,50 +256,100 @@ for key, taus_gen in taus_gen.items():
                             f"RMS = {datos.std():.3f}",
                 transform=ax.transAxes, ha="right", va="top", fontsize=9,
                 bbox=dict(boxstyle="round", facecolor="white", alpha=0.85))
+        ax.text(0.97, 0.84, Data_text_ID_truth, ha="right", va="top",
+                         fontsize=9, family="DejaVu Serif", color = "black", transform=ax.transAxes)
         ax.text(0.1, 0.97, f"{key}",
                         transform=ax.transAxes, ha="left", va="top", fontsize=9,
                         bbox=dict(boxstyle="round", facecolor="white", alpha=0.85))
     fig.axes[0].set_ylabel("Normalized Taus")
 
-    # --- plano transverso x-y ---
-    ax = fig.add_subplot(2, 3, 4)
-    h = ax.hist2d(X, Y, bins=40, range=[[-10, 10], [-10, 10]],
-                cmap="magma", norm=LogNorm(), cmin=1)
-    ax.text(0.1, 0.97, f"{key}",
-                            transform=ax.transAxes, ha="left", va="top", fontsize=9,
-                            bbox=dict(boxstyle="round", color="white", alpha=0.85))
-    ax.set_facecolor("black"); ax.grid(False)
-    ax.set_xlabel("x [mm]"); ax.set_ylabel("y [mm]")
-    ax.set_aspect("equal")
-    ax.set_title("Plano transverso")
-    fig.colorbar(h[3], ax=ax, label="Taus")
+    ax1 = fig.add_subplot(2, 3, 4)
+    ax2 = fig.add_subplot(2, 3, 5, sharey=ax1)
 
-    # --- vista longitudinal z-r ---
-    ax = fig.add_subplot(2, 3, 5)
-    h = ax.hist2d(Z, R, bins=40, range=[[-50, 50], [0, 10]],
-                cmap="magma", norm=LogNorm(), cmin=1)
-    ax.text(0.1, 0.97, f"{key}",
-                                transform=ax.transAxes, ha="left", va="top", fontsize=9,
-                                bbox=dict(boxstyle="round", color="white", alpha=0.85))
-    ax.set_facecolor("black"); ax.grid(False)
-    ax.set_xlabel("z [mm]"); ax.set_ylabel("r [mm]")
-    ax.set_title("Vista longitudinal")
-    fig.colorbar(h[3], ax=ax, label="Taus")
+    for ax, datos, pesos, xlab in [(ax1, PT_taus_to_decay, wPT, r"$p_T$ [GeV]"),
+                                (ax2, E_taus_to_decay,  wE,  r"$E$ [GeV]")]:
+        for key, a in datos.items():
+            ax.hist(a, bins=60, range=(0, 500), weights=pesos,
+                    histtype="step", linewidth=2,
+                    label=f"{key} - Truth Taus to decay")
+        ax.text(0.97, 0.84, Data_text_ID_truth, ha="right", va="top",
+                                 fontsize=9, family="DejaVu Serif", color = "black", transform=ax.transAxes)
+        ax.set_xlabel(xlab)
+        ax.grid(alpha=0.3)
+        ax.legend(fontsize=10)
+
+    ax1.set_ylabel("Normalized Taus")
+    ax2.tick_params(labelleft=False)
 
     # --- radio transverso ---
     ax = fig.add_subplot(2, 3, 6)
-    ax.hist(R, bins=40, range=(0, 10), histtype="step", linewidth=2, density=True)
+    ax.hist(R, bins=40, range=(0, 10), histtype="step", linewidth=2, weights=wR)
     ax.text(0.97, 0.97, f"{key}",
                             transform=ax.transAxes, ha="right", va="top", fontsize=9,
                             bbox=dict(boxstyle="round", facecolor="white", alpha=0.85))
+    ax.text(0.97, 0.84, Data_text_ID_truth, ha="right", va="top",
+                             fontsize=9, family="DejaVu Serif", color = "black", transform=ax.transAxes)
     ax.set_yscale("log")
-    ax.set_xlabel("r [mm]"); ax.set_ylabel("Normalized Taus")
+    ax.set_xlabel("r [mm]")
+    ax.set_ylabel("Normalized Taus")
     ax.grid(alpha=0.3)
 
     plt.tight_layout()
     plt.savefig(f"{SubFolder_Truth}/Tau_decay_vertex.png", dpi=300)
     plt.close()
 
+
+print('Plotting 2D Vertex Parameters of Taus to decay')
+
+keys = list(TwoTaus_gen.keys())
+ncols = len(keys)
+
+fig, axes = plt.subplots(2, ncols, figsize=(5.5*ncols, 11), squeeze=False)
+
+for c, key in enumerate(keys):
+    taus = TwoTaus_gen[key]
+    X = ak.to_numpy(ak.flatten(taus.vx))
+    Y = ak.to_numpy(ak.flatten(taus.vy))
+    Z = ak.to_numpy(ak.flatten(taus.vz))
+    R = np.sqrt(X**2 + Y**2)
+
+    # --- fila 0: plano transverso x-y ---
+    ax = axes[0, c]
+    h = ax.hist2d(X, Y, bins=40, range=[[-10, 10], [-10, 10]],
+                  cmap="magma", norm=LogNorm(), cmin=1)
+    ax.set_facecolor("black"); ax.grid(False)
+    ax.set_xlabel("x [mm]")
+    ax.set_aspect("equal")
+    ax.set_title(f"Plano transverso", fontsize=11)
+    ax.text(0.03, 0.9, f"N = {len(X)}", transform=ax.transAxes,
+            ha="left", va="top", fontsize=9, color="white")
+    ax.text(0.03, 0.97, f"{key}", transform=ax.transAxes,
+                    ha="left", va="top", fontsize=9, color="white")
+    ax.text(0.97, 0.84, Data_text_ID_truth, ha="right", va="top",
+             fontsize=9, family="DejaVu Serif", color = "white", transform=ax.transAxes)
+    fig.colorbar(h[3], ax=ax, label="Taus", fraction=0.046, pad=0.04)
+
+    # --- fila 1: vista longitudinal z-r ---
+    ax = axes[1, c]
+    h = ax.hist2d(Z, R, bins=40, range=[[-50, 50], [0, 10]],
+                  cmap="magma", norm=LogNorm(), cmin=1)
+    ax.set_facecolor("black"); ax.grid(False)
+    ax.set_xlabel("z [mm]")
+    ax.set_title("Vista longitudinal", fontsize=11)
+    ax.text(0.03, 0.97, f"{key}", transform=ax.transAxes,
+                ha="left", va="top", fontsize=9, color="white")
+    ax.text(0.03, 0.9, f"N = {len(Z)}", transform=ax.transAxes,
+            ha="left", va="top", fontsize=9, color="white")
+    ax.text(0.97, 0.95, Data_text_ID_truth, ha="right", va="top",
+                 fontsize=9, family="DejaVu Serif", color = "white", transform=ax.transAxes)
+    fig.colorbar(h[3], ax=ax, label="Taus", fraction=0.046, pad=0.04)
+
+axes[0, 0].set_ylabel("y [mm]")
+axes[1, 0].set_ylabel("r [mm]")
+
+plt.tight_layout()
+plt.savefig(f"{SubFolder_Truth}/Tau_vertex_2D.png", dpi=300)
+plt.close()
 
 # ============================================================================
 # ===                                                                      ===
@@ -297,8 +373,8 @@ print(' ')
 DR_TAU   = 0.1    # radio del cono alrededor del tau truth
 PT_TRACK = 1    # umbral mínimo de pT de los tracks [GeV]
 
-print(f"Matching Tracks to Truth Taus with:")
 print('')
+print(f"Matching Tracks to Truth Taus with:")
 print(f"DR < {DR_TAU} and pT > {PT_TRACK} GeV")
 print('')
 
@@ -357,7 +433,6 @@ plt.close()
 # ============================================================================
 # Eta, Phi and PT
 # ============================================================================
-
 
 print('Plotting Eta, Phi and PT Distributions of Tracks')
 
