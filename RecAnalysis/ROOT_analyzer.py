@@ -399,6 +399,9 @@ def match_tracks_to_truth_taus(t2, tracks_ev, dr_tau=DR_TAU, pt_track=PT_TRACK):
 
 Tracks_truthTaus = {key: match_tracks_to_truth_taus(gen[key], tracks[key]) for key in gen}
 
+N_tracks_total = {key: ak.sum(ak.num(tracks[key], axis=1)) for key in tracks} # N total de tracks 
+N_tracks_matched = {key: ak.sum(ak.num(Tracks_truthTaus[key]["tracks_taus"], axis=1)) for key in Tracks_truthTaus} # N total de tracks matched a taus truth
+
 for key, m in Tracks_truthTaus.items():
     print(f"{key}: ok {ak.sum(m['ok'])}/{len(m['ok'])}  "
           f"prongs- {np.bincount(ak.to_numpy(m['n_m']), minlength=5)[:5]}  "
@@ -412,7 +415,8 @@ for ax, campo, lab in [(axes[0], "n_m", r"$\tau^-$ truth"),
                        (axes[1], "n_p", r"$\tau^+$ truth")]:
     for key, m in Tracks_truthTaus.items():
         a = ak.to_numpy(m[campo])
-        ax.hist(a, bins=bines, histtype="step", linewidth=2, density=True,
+        w = np.full(len(a), 1.0 / len(a))
+        ax.hist(a, bins=bines, histtype="step", linewidth=2, weights=w,
                 label=f"{key}  (N={len(a)}, 1p {100*(a==1).mean():.0f}%, "
                       f"3p {100*(a==3).mean():.0f}%)")
         
@@ -440,12 +444,24 @@ pt_data = {key: ak.to_numpy(ak.flatten(tracks[key].pt)) for key in tracks}
 eta_data = {key: ak.to_numpy(ak.flatten(tracks[key].eta)) for key in tracks}
 phi_data = {key: ak.to_numpy(ak.flatten(tracks[key].phi)) for key in tracks}
 
-
 pt_data_taus = {key: ak.to_numpy(ak.flatten(Tracks_truthTaus[key]["tracks_taus"].pt)) for key in Tracks_truthTaus}
 eta_data_taus = {key: ak.to_numpy(ak.flatten(Tracks_truthTaus[key]["tracks_taus"].eta)) for key in Tracks_truthTaus}
 phi_data_taus = {key: ak.to_numpy(ak.flatten(Tracks_truthTaus[key]["tracks_taus"].phi)) for key in Tracks_truthTaus}
 
-lim_inf_pt, lim_sup_pt, p_debajo_pt, p_dentro_pt, p_encima_pt = f.calculo_rangos(0, 100, list(MET_data.values()))
+# Calculo de pesos
+
+w_pt_data = {key: np.full(len(pt_data[key]), 1.0 / N_tracks_total[key]) for key in N_tracks_total}
+w_eta_data = {key: np.full(len(eta_data[key]), 1.0 / N_tracks_total[key]) for key in N_tracks_total}
+w_phi_data = {key: np.full(len(phi_data[key]), 1.0 / N_tracks_total[key]) for key in N_tracks_total}
+
+w_pt_data_taus = {key: np.full(len(pt_data_taus[key]), 1.0 / N_tracks_matched[key]) for key in N_tracks_matched}
+w_eta_data_taus = {key: np.full(len(eta_data_taus[key]), 1.0 / N_tracks_matched[key]) for key in N_tracks_matched}
+w_phi_data_taus = {key: np.full(len(phi_data_taus[key]), 1.0 / N_tracks_matched[key]) for key in N_tracks_matched}
+
+
+# limites
+
+lim_inf_pt, lim_sup_pt, p_debajo_pt, p_dentro_pt, p_encima_pt = f.calculo_rangos(0, 100, list(pt_data.values()))
 lim_inf_eta, lim_sup_eta, p_debajo_eta, p_dentro_eta, p_encima_eta = f.calculo_rangos(-5,5, list(eta_data.values()))
 lim_inf_phi, lim_sup_phi, p_debajo_phi, p_dentro_phi, p_encima_phi = f.calculo_rangos(-3.2,3.2, list(phi_data.values()))
 
@@ -454,21 +470,21 @@ texto_eta = (f"Debajo de {lim_inf_eta}: {p_debajo_eta:.2f}%\n"f"Dentro del rango
 texto_phi = (f"Debajo de {lim_inf_phi}: {p_debajo_phi:.2f}%\n"f"Dentro del rango : {p_dentro_phi:.2f}%\n"f"Encima de {lim_sup_phi}: {p_encima_phi:.2f}%")
 
 labels = [r"LQ - Tracks", r"BG - Tracks", r"SM - Tracks"]
-kw = dict(bins=50, density=True, histtype="step", linewidth=2)
+kw = dict(bins=50, histtype="step", linewidth=2)
 
-fig, axes = plt.subplots(1, 3, figsize=(18,6), sharey=True)
+fig, axes = plt.subplots(1, 3, figsize=(18,6), sharey=False)
 
 for i, (key, pt) in enumerate(pt_data.items()):
-        axes[0].hist(pt, range=(lim_inf_pt, lim_sup_pt), **kw, label=f"{key}-Tracks")
-        axes[0].hist(pt_data_taus[key], range=(lim_inf_pt, lim_sup_pt), **kw, label=f"{key} Truth-Tau Tracks")
+        axes[0].hist(pt, range=(lim_inf_pt, lim_sup_pt), **kw, label=f"{key}-Tracks", weights=w_pt_data[key])
+        axes[0].hist(pt_data_taus[key], range=(lim_inf_pt, lim_sup_pt), **kw, label=f"{key} Truth-Tau Tracks", weights=w_pt_data_taus[key])
 
 for j, (key, eta) in enumerate(eta_data.items()):
-        axes[1].hist(eta, range=(lim_inf_eta, lim_sup_eta), **kw, label=f"{key}-Tracks")
-        axes[1].hist(eta_data_taus[key], range=(lim_inf_eta, lim_sup_eta), **kw, label=f"{key} Truth-Tau Tracks")
+        axes[1].hist(eta, range=(lim_inf_eta, lim_sup_eta), **kw, label=f"{key}-Tracks", weights=w_eta_data[key])
+        axes[1].hist(eta_data_taus[key], range=(lim_inf_eta, lim_sup_eta), **kw, label=f"{key} Truth-Tau Tracks", weights=w_eta_data_taus[key])
 
 for k, (key, phi) in enumerate(phi_data.items()):
-        axes[2].hist(phi, range=(lim_inf_phi, lim_sup_phi), **kw, label=f"{key}-Tracks")
-        axes[2].hist(phi_data_taus[key], range=(lim_inf_phi, lim_sup_phi), **kw, label=f"{key} Truth-Tau Tracks")
+        axes[2].hist(phi, range=(lim_inf_phi, lim_sup_phi), **kw, label=f"{key}-Tracks", weights=w_phi_data[key])
+        axes[2].hist(phi_data_taus[key], range=(lim_inf_phi, lim_sup_phi), **kw, label=f"{key} Truth-Tau Tracks", weights=w_phi_data_taus[key])
         
 axes[0].text(0.98, 0.97,texto_pt,transform=axes[0].transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
 axes[0].set_ylabel("Normalized Events")
@@ -556,7 +572,13 @@ dz_data = {key: ak.to_numpy(ak.flatten(tracks[key].dz)) for key in tracks}
 d0_truthtau_tracks = {key: ak.to_numpy(ak.flatten(Tracks_truthTaus[key]["tracks_taus"].d0)) for key in Tracks_truthTaus}
 dz_truthtau_tracks = {key: ak.to_numpy(ak.flatten(Tracks_truthTaus[key]["tracks_taus"].dz)) for key in Tracks_truthTaus}
 
-kw = dict(bins=50, density=True, histtype="step", linewidth=2)
+w_d0 = {key: np.full(len(d0_data[key]), 1.0 / N_tracks_total[key]) for key in N_tracks_total}
+w_dz = {key: np.full(len(dz_data[key]), 1.0 / N_tracks_total[key]) for key in N_tracks_total}
+
+w_d0_truthtau = {key: np.full(len(d0_truthtau_tracks[key]), 1.0 / N_tracks_total[key]) for key in N_tracks_total}
+w_dz_truthtau = {key: np.full(len(dz_truthtau_tracks[key]), 1.0 / N_tracks_total[key]) for key in N_tracks_total}
+
+kw = dict(bins=50, histtype="step", linewidth=2)
 
 lim_inf_d0, lim_sup_d0, p_debajo_d0, p_dentro_d0, p_encima_d0 = f.calculo_rangos(-6,6, list(d0_data.values()))
 lim_inf_dz, lim_sup_dz, p_debajo_dz, p_dentro_dz, p_encima_dz = f.calculo_rangos(-30,30, list(dz_data.values()))
@@ -570,15 +592,15 @@ axes[0].text(0.98, 0.97,texto0,transform=axes[0].transAxes,ha="right",va="top",b
 axes[1].text(0.98, 0.97,texto1,transform=axes[1].transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
 
 for i, (key, d0) in enumerate(d0_data.items()):
-        axes[0].hist(d0, range=(lim_inf_d0, lim_sup_d0), **kw, label=f"{key}")
-        axes[0].hist(d0_truthtau_tracks[key], range=(lim_inf_d0, lim_sup_d0), **kw, label=f"{key} Truth-Tau Tracks")
+        axes[0].hist(d0, range=(lim_inf_d0, lim_sup_d0), **kw, label=f"{key}", weights=w_d0[key])
+        axes[0].hist(d0_truthtau_tracks[key], range=(lim_inf_d0, lim_sup_d0), **kw, label=f"{key} Truth-Tau Tracks", weights=w_d0_truthtau[key])
 
 for j, (key, dz) in enumerate(dz_data.items()):
-        axes[1].hist(dz, range=(lim_inf_dz, lim_sup_dz), **kw, label=f"{key}")
-        axes[1].hist(dz_truthtau_tracks[key], range=(lim_inf_dz, lim_sup_dz), **kw, label=f"{key} Truth-Tau Tracks")
+        axes[1].hist(dz, range=(lim_inf_dz, lim_sup_dz), **kw, label=f"{key}", weights=w_dz[key])
+        axes[1].hist(dz_truthtau_tracks[key], range=(lim_inf_dz, lim_sup_dz), **kw, label=f"{key} Truth-Tau Tracks", weights=w_dz_truthtau[key])
 
 axes[0].set_xlabel(r"$d_0$ [mm]")
-axes[0].set_ylabel("Normalize Number of Tracks")
+axes[0].set_ylabel("Normalized Number of Tracks")
 axes[0].set_yscale('log')
 axes[0].set_title('Transverse displacement (d0)')
 
@@ -617,11 +639,11 @@ plt.text(0.98, 0.8, Data_text_ID_tracks, transform=plt.gca().transAxes,
         ha="right", va="top", fontsize=10, family="DejaVu Serif")
 
 for i, (key, ntrk) in enumerate(ntrk_data.items()):
-        plt.hist(ntrk, bins=250, density=True, range=(lim_inf_ntrk, lim_sup_ntrk), histtype="step", linewidth=2, label=f"All Tracks")
-        plt.hist(ntrk_truthtau[key], bins=250, density=True, range=(lim_inf_ntrk, lim_sup_ntrk), histtype="step", linewidth=2, label=f"{key} Truth-Tau Tracks")
+        plt.hist(ntrk, bins=250, range=(lim_inf_ntrk, lim_sup_ntrk), density = True, histtype="step", linewidth=2, label=f"All Tracks")
+        plt.hist(ntrk_truthtau[key], bins=250, range=(lim_inf_ntrk, lim_sup_ntrk), density = True, histtype="step", linewidth=2, label=f"{key} Truth-Tau Tracks")
 
 plt.xlabel(r"Number of Tracks")
-plt.ylabel("Events")
+plt.ylabel("Normalized Events")
 plt.grid()
 plt.legend(loc = 'upper left')
 
@@ -660,7 +682,6 @@ def build_selected_pairs(taus, bjets):
                     "taus": tc, "bjets": bc}
     return out
 
-
 def build_observables(sel):
     obs = {}
     for key, s in sel.items():
@@ -690,6 +711,29 @@ print('Calculating Observables')
 Observables = build_observables(Selection_dictionary)               # Calculo los observables de cada par de Taus y Bs seleccionados
 
 ncols = len(Observables)
+
+
+
+# ============================================================================
+# Eventos que sobreviven a la selección de 2 Taus + 2 Bjets
+# ============================================================================
+
+
+N_events_selected = {key: len(sel["taus"]) for key, sel in Selection_dictionary.items()} # Si bien tomo la columna "taus", todos los eventos 
+                                                                                         # seleccionados tienen al menos 2 Taus y 2 Bjets, 
+                                                                                         # por lo que es equivalente a tomar "bjets" o "taus+bjets"
+
+
+N_taus_selected = {key: ak.sum(ak.num(sel['taus'], axis=1)) for key, sel in Selection_dictionary.items()}
+N_bjet_selected = {key: ak.sum(ak.num(sel['bjets'], axis=1)) for key, sel in Selection_dictionary.items()}
+
+print('')
+print('Average Number of Jets per Selected event (2tau+2bjet): ')
+for key in Selection_dictionary.keys():
+    print(f'{key}:')
+    print('taus: ', N_taus_selected[key] / N_events_selected[key])
+    print('bjets: ', N_bjet_selected[key] / N_events_selected[key])
+    print('')
 
 
 # ============================================================================
@@ -839,15 +883,22 @@ filas = [
      r"$M(\tau_{\mathrm{vis}}\tau_{\mathrm{vis}})$", r"$M(b\bar{b})$"),
 ]
 
-fig, axes = plt.subplots(2, len(Observables.keys()), figsize=(5.5*ncols, 10), sharey='row',squeeze=False)
+ffig, axes = plt.subplots(2, len(Observables.keys()), figsize=(5.5*ncols, 10),
+                         sharey='row', squeeze=False)
+
 for r, (k_tt, k_bb, (lo, hi), nbins, xlabel, lab_tt, lab_bb) in enumerate(filas):
     for c, key in enumerate(Observables):
         ax = axes[r, c]
-        li, ls, p_deb, p_den, p_enc = f.calculo_rangos(lo, hi, [Observables[key][k_tt], Observables[key][k_bb]])
+        li, ls, p_deb, p_den, p_enc = f.calculo_rangos(
+            lo, hi, [Observables[key][k_tt], Observables[key][k_bb]])
 
-        kw = dict(bins=nbins, density=True, range=(li, ls), histtype="step", linewidth=2)
-        ax.hist(ak.to_numpy(Observables[key][k_tt]), label=lab_tt, **kw)
-        ax.hist(ak.to_numpy(Observables[key][k_bb]), label=lab_bb, **kw)
+        a_tt = ak.to_numpy(Observables[key][k_tt])
+        a_bb = ak.to_numpy(Observables[key][k_bb])
+        w = np.full(len(a_tt), 1.0 / len(a_tt))
+
+        kw = dict(bins=nbins, range=(li, ls), histtype="step", linewidth=2, weights=w)
+        ax.hist(a_tt, label=lab_tt, **kw)
+        ax.hist(a_bb, label=lab_bb, **kw)
 
         ax.set_xlabel(xlabel)
         ax.legend(loc="lower right", fontsize=9)
@@ -862,8 +913,8 @@ for r, (k_tt, k_bb, (lo, hi), nbins, xlabel, lab_tt, lab_bb) in enumerate(filas)
         if r == 0:
             ax.set_title(fr'{key}')
 
-axes[0, 0].set_ylabel("Densidad normalizada")
-axes[1, 0].set_ylabel("Densidad normalizada")
+axes[0, 0].set_ylabel("Fracción de eventos")
+axes[1, 0].set_ylabel("Fracción de eventos")
 
 axes[0, 0].text(0.98, 0.80, Data_text_ID_jets, transform=axes[0, 0].transAxes, ha="right", va="top",
          fontsize=9, family="DejaVu Serif")
@@ -884,6 +935,8 @@ print('Plotting IM Distribution of (tatabb)')
 
 Higgs_mass = {key: ak.to_numpy(Observables[key]["m_hh"]) for key in Observables}
 
+w_higgs = {key: np.full(len(Observables[key]["m_hh"]), 1.0 / N_events_selected[key]) for key in Observables}
+
 lim_inf_mhh, lim_sup_mhh, p_debajo_mhh, p_dentro_mhh, p_encima_mhh = f.calculo_rangos(130,1500, list(Higgs_mass.values()))
 
 texto_Higgs = (f"Debajo de {lim_inf_mhh} GeV : {p_debajo_mhh:.2f}%\n"f"Dentro del rango : {p_dentro_mhh:.2f}%\n"f"Encima de {lim_sup_mhh} GeV : {p_encima_mhh:.2f}%")
@@ -896,7 +949,8 @@ plt.text(0.98, 0.84, Data_text_ID_jets, transform=plt.gca().transAxes,
 plt.text(0.98, 0.98,texto_Higgs,transform=plt.gca().transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
 
 for key, arr in Higgs_mass.items():
-    plt.hist(ak.to_numpy(arr), bins=40, density=True, range=(lim_inf_mhh, lim_sup_mhh), histtype="step", linewidth=2, label=fr'{key}')
+    plt.hist(ak.to_numpy(arr), bins=40, density=False, range=(lim_inf_mhh, lim_sup_mhh), 
+             histtype="step", linewidth=2, label=fr'{key}', weights= w_higgs[key])
 
 plt.xlabel(r"$M$ [GeV]")
 plt.ylabel("Eventos")
