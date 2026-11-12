@@ -217,86 +217,50 @@ print('Plotting Vertex Parameters of Taus to decay')
 taus_gen = {key: gen[key][(abs(gen[key].pid) == 15) & (gen[key].status == 2)] for key in gen}
 TwoTaus_gen = {key: taus_gen[key][(ak.num(taus_gen[key], axis=1) >= 2)] for key in taus_gen}
 
-PT_taus_to_decay = {key: ak.to_numpy(ak.flatten(taus.pt)) for key, taus in TwoTaus_gen.items()}
-E_taus_to_decay = {key: ak.to_numpy(ak.flatten(taus.E)) for key, taus in TwoTaus_gen.items()}
-
 n_taus_per_event = {key: ak.num(TwoTaus_gen[key], axis=1) for key in TwoTaus_gen}
 n_total = {key: ak.sum(n_taus_per_event[key]) for key in n_taus_per_event}
 
-# Plot con los parámetros de los vertices a truth-level
-for key, taus in TwoTaus_gen.items():
+# Una entrada por tau, para cada variable
+PT_taus_to_decay = {key: ak.to_numpy(ak.flatten(t.pt)) for key, t in TwoTaus_gen.items()}
+E_taus_to_decay  = {key: ak.to_numpy(ak.flatten(t.E))  for key, t in TwoTaus_gen.items()}
+X_vertex = {key: ak.to_numpy(ak.flatten(t.vx)) for key, t in TwoTaus_gen.items()}
+Y_vertex = {key: ak.to_numpy(ak.flatten(t.vy)) for key, t in TwoTaus_gen.items()}
+Z_vertex = {key: ak.to_numpy(ak.flatten(t.vz)) for key, t in TwoTaus_gen.items()}
+R_vertex = {key: np.sqrt(X_vertex[key]**2 + Y_vertex[key]**2) for key in X_vertex}
 
-    N_total = n_total[key]
+# (datos, etiqueta del eje x, rango, nbins, escala log en y)
+paneles = [
+    (X_vertex,         "x [mm]",       (-10, 10), 40, True),
+    (Y_vertex,         "y [mm]",       (-10, 10), 40, True),
+    (Z_vertex,         "z [mm]",       (-50, 50), 40, True),
+    (PT_taus_to_decay, r"$p_T$ [GeV]", (0, 500),  60, False),
+    (E_taus_to_decay,  r"$E$ [GeV]",   (0, 500),  60, False),
+    (R_vertex,         "r [mm]",       (0, 10),   40, True),
+]
 
-    X = ak.to_numpy(ak.flatten(taus.vx))
-    Y = ak.to_numpy(ak.flatten(taus.vy))
-    Z = ak.to_numpy(ak.flatten(taus.vz))
+fig, axes = plt.subplots(2, 3, figsize=(16, 9))
 
-    R = np.sqrt(X**2 + Y**2)
-
-    wx = np.full(len(X), 1.0 / N_total)
-    wy = np.full(len(Y), 1.0 / N_total)
-    wz = np.full(len(Z), 1.0 / N_total)
-    wR = np.full(len(R), 1.0 / N_total)
-    wPT = np.full(len(PT_taus_to_decay[key]), 1.0 / N_total)
-    wE = np.full(len(E_taus_to_decay[key]), 1.0 / N_total)
-
-    fig = plt.figure(figsize=(16, 9))
-
-    # --- fila 1: las tres coordenadas ---
-    for i, (datos, lab, rango, w) in enumerate([(X, "x", (-10, 10), wx),
-                                            (Y, "y", (-10, 10), wy),
-                                            (Z, "z", (-50, 50), wz)]):
-        ax = fig.add_subplot(2, 3, i + 1)
-        ax.hist(datos, bins=40, range=rango, histtype="step", linewidth=2, weights=w)
+for ax, (datos, xlab, rango, nbins, logy) in zip(axes.flat, paneles):
+    for k, a in datos.items():
+        w = np.full(len(a), 1.0 / n_total[k])
+        ax.hist(a, bins=nbins, range=rango, weights=w,
+                histtype="step", linewidth=2,
+                label=f"{k}  (mediana {np.median(a):.3f})")
+    if logy:
         ax.set_yscale("log")
-        ax.set_xlabel(f"{lab} [mm]")
-        ax.grid(alpha=0.3)
-        ax.text(0.97, 0.97, f"mediana = {np.median(datos):.3f}\n"
-                            f"RMS = {datos.std():.3f}",
-                transform=ax.transAxes, ha="right", va="top", fontsize=9,
-                bbox=dict(boxstyle="round", facecolor="white", alpha=0.85))
-        ax.text(0.97, 0.84, Data_text_ID_truth, ha="right", va="top",
-                         fontsize=9, family="DejaVu Serif", color = "black", transform=ax.transAxes)
-        ax.text(0.1, 0.97, f"{key}",
-                        transform=ax.transAxes, ha="left", va="top", fontsize=9,
-                        bbox=dict(boxstyle="round", facecolor="white", alpha=0.85))
-    fig.axes[0].set_ylabel("Normalized Taus")
-
-    ax1 = fig.add_subplot(2, 3, 4)
-    ax2 = fig.add_subplot(2, 3, 5, sharey=ax1)
-
-    for ax, datos, pesos, xlab in [(ax1, PT_taus_to_decay, wPT, r"$p_T$ [GeV]"),
-                                (ax2, E_taus_to_decay,  wE,  r"$E$ [GeV]")]:
-        for key, a in datos.items():
-            ax.hist(a, bins=60, range=(0, 500), weights=pesos,
-                    histtype="step", linewidth=2,
-                    label=f"{key} - Truth Taus to decay")
-        ax.text(0.97, 0.84, Data_text_ID_truth, ha="right", va="top",
-                                 fontsize=9, family="DejaVu Serif", color = "black", transform=ax.transAxes)
-        ax.set_xlabel(xlab)
-        ax.grid(alpha=0.3)
-        ax.legend(fontsize=10)
-
-    ax1.set_ylabel("Normalized Taus")
-    ax2.tick_params(labelleft=False)
-
-    # --- radio transverso ---
-    ax = fig.add_subplot(2, 3, 6)
-    ax.hist(R, bins=40, range=(0, 10), histtype="step", linewidth=2, weights=wR)
-    ax.text(0.97, 0.97, f"{key}",
-                            transform=ax.transAxes, ha="right", va="top", fontsize=9,
-                            bbox=dict(boxstyle="round", facecolor="white", alpha=0.85))
-    ax.text(0.97, 0.84, Data_text_ID_truth, ha="right", va="top",
-                             fontsize=9, family="DejaVu Serif", color = "black", transform=ax.transAxes)
-    ax.set_yscale("log")
-    ax.set_xlabel("r [mm]")
-    ax.set_ylabel("Normalized Taus")
+    ax.set_xlabel(xlab)
     ax.grid(alpha=0.3)
+    ax.legend(fontsize=8)
 
-    plt.tight_layout()
-    plt.savefig(f"{SubFolder_Truth}/Tau_decay_vertex.png", dpi=300)
-    plt.close()
+axes[0, 0].set_ylabel("Normalized Taus")
+axes[1, 0].set_ylabel("Normalized Taus")
+
+fig.text(0.01, 0.99, Data_text_ID_truth, ha="left", va="top",
+         fontsize=9, family="DejaVu Serif")
+
+fig.tight_layout(rect=(0, 0, 1, 0.93))
+plt.savefig(f"{SubFolder_Truth}/Tau_decay_vertex.png", dpi=300)
+plt.close()
 
 
 print('Plotting 2D Vertex Parameters of Taus to decay')
