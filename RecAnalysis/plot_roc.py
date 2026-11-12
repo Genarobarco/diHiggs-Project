@@ -1,21 +1,40 @@
+"""ROC 1 - eff_bg vs eff_sig a partir de las salidas de `salt test`."""
+
+from pathlib import Path
+
 import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 
 # --- Ajustar ---
-FILE_SIG = "logs/<run>/ckpts/<ckpt>__test_sig.h5"
-FILE_BKG = "logs/<run>/ckpts/<ckpt>__test_bkg.h5"
-OBJ = "events"  # objeto global (data.global_object)
-SCORE = "MiModelo_psignal"  # <name>_p<clase de señal>
-WPS = [0.5, 0.7, 0.85]  # working points a marcar (eficiencia de señal)
+RUN_DIR = Path("/home/gbarco/DiHiggsProject/OutTrainings/GN2Tracks_v01_20261105-T131007")
+EPOCH = "049"
+OBJ = "jets"  # global_object del entrenamiento
+SIG_CLASS = "hadtaujets"  # el score se llama <modelo>_p<clase>
+WPS = [0.6, 0.7, 0.8, 0.9]  # working points a marcar (eficiencia de señal)
+OUT_PLOT = "roc_1-effbg.png"
+
+trapezoid = getattr(np, "trapezoid", None) or np.trapz  # numpy < 2.0
+
+
+def find_test_file(sample):
+    matches = sorted((RUN_DIR / "ckpts").glob(f"epoch={EPOCH}-*__test_{sample}*.h5"))
+    if not matches:
+        raise FileNotFoundError(f"No hay test '{sample}' para epoch={EPOCH} en {RUN_DIR / 'ckpts'}")
+    return matches[0]
 
 
 def load(fname):
-    with h5py.File(fname) as h:
-        return h[OBJ].fields(SCORE)[...].astype(np.float64)
+    with h5py.File(fname, "r") as h:
+        d = h[OBJ]
+        score = next((n for n in d.dtype.names if n.endswith(f"_p{SIG_CLASS}")), None)
+        if score is None:
+            raise KeyError(f"No hay '*_p{SIG_CLASS}' en {fname.name}. Campos: {d.dtype.names}")
+        return d.fields(score)[:].astype(np.float64)
 
 
-s_sig, s_bkg = load(FILE_SIG), load(FILE_BKG)
+s_sig = load(find_test_file("signal"))
+s_bkg = load(find_test_file("background"))
 
 # ROC: ordenar todos los scores de mayor a menor y acumular
 scores = np.concatenate([s_sig, s_bkg])
@@ -23,19 +42,20 @@ is_sig = np.concatenate([np.ones_like(s_sig), np.zeros_like(s_bkg)])
 order = np.argsort(-scores, kind="stable")
 eff_sig = np.concatenate([[0], np.cumsum(is_sig[order]) / len(s_sig)])
 eff_bkg = np.concatenate([[0], np.cumsum(1 - is_sig[order]) / len(s_bkg)])
-auc = np.trapezoid(1 - eff_bkg, eff_sig)
+auc = trapezoid(1 - eff_bkg, eff_sig)
 
 fig, ax = plt.subplots(figsize=(6, 5))
-ax.plot(eff_sig, 1 - eff_bkg, label=f"Salt (AUC = {auc:.4f})")
+ax.plot(eff_sig, 1 - eff_bkg, label=f"GN2 tracks (AUC = {auc:.4f})")
 ax.plot([0, 1], [1, 0], "k--", lw=0.8, label="Aleatorio")
 
+print(f"N señal = {len(s_sig):,}  N fondo = {len(s_bkg):,}  AUC = {auc:.4f}")
 for wp in WPS:
     cut = np.percentile(s_sig, 100 * (1 - wp))
     eb = np.mean(s_bkg > cut)
+    print(f"  eff_sig = {wp:.0%} -> 1-eff_bg = {1 - eb:.4f}  (corte p_sig > {cut:.4f})")
     ax.plot(wp, 1 - eb, "o")
-    ax.annotate(f"WP {wp:.0%}: corte={cut:.3f}, $1-\\epsilon_{{bg}}$={1 - eb:.3f}",
-                (wp, 1 - eb), textcoords="offset points", xytext=(-10, -15),
-                ha="right", fontsize=8)
+    ax.annotate(f"{wp:.0%}: $1-\\epsilon_{{bg}}$={1 - eb:.3f}", (wp, 1 - eb),
+                textcoords="offset points", xytext=(-8, -14), ha="right", fontsize=8)
 
 ax.set_xlabel(r"$\epsilon_{sig}$")
 ax.set_ylabel(r"$1 - \epsilon_{bg}$")
@@ -44,4 +64,5 @@ ax.set_ylim(0, 1.02)
 ax.grid(alpha=0.3)
 ax.legend(loc="lower left")
 fig.tight_layout()
-fig.savefig("roc.png", dpi=200)
+fig.savefig(OUT_PLOT, dpi=200)
+print(f"Guardado: {OUT_PLOT}")
