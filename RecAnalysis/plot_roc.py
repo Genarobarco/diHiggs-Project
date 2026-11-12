@@ -63,38 +63,43 @@ ax.set_xlim(0, 1)
 ax.set_ylim(0, 1.02)
 ax.grid(alpha=0.3)
 ax.legend(loc="lower left")
-fig.tight_layout()
-fig.savefig(OUT_PLOT, dpi=200)
+plt.tight_layout()
+plt.savefig(OUT_PLOT, dpi=200)
 print(f"Guardado: {OUT_PLOT}")
 
-
-# Calculo de asimov.
 
 def Asimov(signal, bg):
     return np.sqrt(2*(bg*np.log(bg/(signal+bg)) + signal))
 
-working_points = np.arange(0.025, 1.025, 0.025)
+working_points = np.linspace(0, 1, 100)
 significancias = []
 
 for wp in working_points:
-
-    cut = np.percentile(s_sig, 100 * (1 - wp))
+    cut = np.percentile(s_sig, np.clip(100 * (1 - wp), 0, 100))
     n_s = int(np.sum(s_sig > cut))
     n_b = int(np.sum(s_bkg > cut))
+    significancias.append(Asimov(n_s, n_b) if n_b > 0 else np.nan)
 
-    sig = Asimov(n_s, n_b)
-
-    significancias.append(sig)
-
+significancias = np.array(significancias)
+i = np.nanargmax(significancias)
+wp_max, sig_max = working_points[i], significancias[i]
 
 fig, ax = plt.subplots(figsize=(8, 5.5))
 
-ax.plot(working_points, np.array(significancias))
+ax.plot(working_points, significancias, lw=1.8, label="Asimov")
+ax.axvline(wp_max, color="red", ls="--", lw=1.2)
+ax.plot(wp_max, sig_max, "r*", ms=15, zorder=5,
+        label=rf"máximo: WP = {wp_max:.1%}, $Z$ = {sig_max:.2f}")
+ax.annotate(rf"WP = {wp_max:.1%}" "\n" rf"$Z_{{max}}$ = {sig_max:.2f}",
+            xy=(wp_max, sig_max), xytext=(12, -28),
+            textcoords="offset points", fontsize=10,
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.85))
 
 ax.set_xlabel(r"Working point ($\epsilon_{sig}$)")
 ax.set_ylabel(r"Significance")
 ax.grid(alpha=0.3)
-ax.legend()
+ax.legend(loc="lower center")
+
 fig.tight_layout()
 fig.savefig(f"Significancia_vs_WP.png", dpi=300)
 plt.close()
