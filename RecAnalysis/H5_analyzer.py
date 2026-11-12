@@ -41,7 +41,7 @@ N_EPOCH = "049"
 # --- Corte en el clasificador: D = log(p_tau / p_qcd)
 # GNN_WP: eficiencia de señal deseada; el corte en D se elige para que pase esa fracción de la señal.
 # GNN_CUT: si no es None, se usa este valor de D directamente e ignora GNN_WP.
-GNN_WP = 0.70
+GNN_WP = 0.80
 GNN_CUT = None
 
 # nombre de cada muestra : (sufijo de los archivos de test, color)

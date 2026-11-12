@@ -1,0 +1,15 @@
+BenchMark: BM500
+Process: gg-hhj
+Delphes: HL-LHC
+$\sqrt{s}$ = 14TeV
+MET > 100 GeV
+$p_T$ > 20 GeV
+$|\eta| < 2.5$
+GNN: D > 0.02 (80% eff. señal)
+
+Muestra                    Test  Pasan GNN  Efic. GNN  Sel. 2t+2b   Acept.  Acept. tot.  Ev. doble tag  % doble
+----------------------------------------------------------------------------------------------------------------
+LQ - gg > hhj             35380      35380    100.00%        1114    3.15%        3.15%           2038    5.76%
+LQ - gg > hhj (GNN)       35380      28304     80.00%         856    3.02%        2.42%           1593    5.63%
+BG - pp > tthj            44019      44019    100.00%        1066    2.42%        2.42%           4557   10.35%
+BG - pp > tthj (GNN)      44019       8843     20.09%         208    2.35%        0.47%           1052   11.90%
