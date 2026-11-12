@@ -73,7 +73,7 @@ print(f"Guardado: {OUT_PLOT}")
 def Asimov(signal, bg):
     return np.sqrt(2*(bg*np.log(bg/(signal+bg)) + signal))
 
-working_points = np.linspace(0, 1, 100)
+working_points = np.arange(0.025, 1.025, 0.025)
 significancias = []
 
 for wp in working_points:
@@ -85,9 +85,6 @@ for wp in working_points:
     sig = Asimov(n_s, n_b)
 
     significancias.append(sig)
-
-
-
 
 
 fig, ax = plt.subplots(figsize=(8, 5.5))
