@@ -66,3 +66,38 @@ ax.legend(loc="lower left")
 fig.tight_layout()
 fig.savefig(OUT_PLOT, dpi=200)
 print(f"Guardado: {OUT_PLOT}")
+
+
+# Calculo de asimov.
+
+def Asimov(signal, bg):
+    return np.sqrt(2*(bg*np.log(bg/(signal+bg)) + signal))
+
+working_points = np.linspace(0, 1, 100)
+significancias = []
+
+for wp in working_points:
+
+    cut = np.percentile(s_sig, 100 * (1 - wp))
+    n_s = int(np.sum(s_sig > cut))
+    n_b = int(np.sum(s_bkg > cut))
+
+    sig = Asimov(n_s, n_b)
+
+    significancias.append(sig)
+
+
+
+
+
+fig, ax = plt.subplots(figsize=(8, 5.5))
+
+ax.plot(working_points, np.array(significancias))
+
+ax.set_xlabel(r"Working point ($\epsilon_{sig}$)")
+ax.set_ylabel(r"Significance")
+ax.grid(alpha=0.3)
+ax.legend()
+fig.tight_layout()
+fig.savefig(f"Significancia_vs_WP.png", dpi=300)
+plt.close()
