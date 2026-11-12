@@ -22,7 +22,7 @@ saving_path = 'RecAnalysis/'
 
 # MET Selection
 
-MET_LowerBond = 0     # GeV
+MET_LowerBond = 100     # GeV
 
 # Jets preselection cuts
 Pre_PT_jet = 20       # GeV
