@@ -192,6 +192,32 @@ jets, tracks = build_objects(all_data, Pre_PT_jet, Pre_eta_jet, Pre_PT_track, Pr
 
 
 # ============================================================================
+# Normalizacion: pre y post GNN comparten denominador
+# ============================================================================
+# Cada muestra aparece dos veces en all_data: "<nombre>" (todo el test) y
+# "<nombre> (GNN)" (los que pasan el clasificador). Para que la curva post-GNN
+# muestre la eficiencia del corte en vez de reescalarse a la misma altura,
+# las dos se dividen por el MISMO numero: el de la muestra pre-GNN.
+
+GNN_SUFFIX = " (GNN)"
+
+
+def base_of(key):
+    """'LQ - gg > hhj (GNN)' -> 'LQ - gg > hhj'."""
+    return key[: -len(GNN_SUFFIX)] if key.endswith(GNN_SUFFIX) else key
+
+
+# denominadores, tomados siempre de la muestra pre-GNN
+N_tracks_base = {key: int(ak.sum(ak.num(tracks[base_of(key)], axis=1))) for key in tracks}
+N_events_base = {key: len(jets[base_of(key)]) for key in jets}
+
+
+def peso(n, denom):
+    """Array de pesos 1/denom, del largo de los datos."""
+    return np.full(n, 1.0 / denom) if denom else np.zeros(n)
+
+
+# ============================================================================
 # ===                                                                      ===
 # ===                         Track Analysis                               ===
 # ===                                                                      ===
@@ -222,22 +248,25 @@ texto_pt = (f"Debajo de {lim_inf_pt} GeV : {p_debajo_pt:.2f}%\n"f"Dentro del ran
 texto_eta = (f"Debajo de {lim_inf_eta}: {p_debajo_eta:.2f}%\n"f"Dentro del rango : {p_dentro_eta:.2f}%\n"f"Encima de {lim_sup_eta}: {p_encima_eta:.2f}%")
 texto_phi = (f"Debajo de {lim_inf_phi}: {p_debajo_phi:.2f}%\n"f"Dentro del rango : {p_dentro_phi:.2f}%\n"f"Encima de {lim_sup_phi}: {p_encima_phi:.2f}%")
 
-kw = dict(bins=50, density=True, histtype="step", linewidth=2)
+kw = dict(bins=50, histtype="step", linewidth=2)
 
 fig, axes = plt.subplots(1, 3, figsize=(18,6), sharey=True)
 
 
 for i, (key, pt) in enumerate(pt_data.items()):
-        axes[0].hist(pt, range=(lim_inf_pt, lim_sup_pt), **kw, **style[key], label=f"{key}-Tracks")
+        axes[0].hist(pt, range=(lim_inf_pt, lim_sup_pt), **kw, **style[key], label=f"{key}-Tracks",
+                     weights=peso(len(pt), N_tracks_base[key]))
 
 for j, (key, eta) in enumerate(eta_data.items()):
-        axes[1].hist(eta, range=(lim_inf_eta, lim_sup_eta), **kw, **style[key], label=f"{key}-Tracks")
+        axes[1].hist(eta, range=(lim_inf_eta, lim_sup_eta), **kw, **style[key], label=f"{key}-Tracks",
+                     weights=peso(len(eta), N_tracks_base[key]))
 
 for k, (key, phi) in enumerate(phi_data.items()):
-        axes[2].hist(phi, range=(lim_inf_phi, lim_sup_phi), **kw, **style[key], label=f"{key}-Tracks")
+        axes[2].hist(phi, range=(lim_inf_phi, lim_sup_phi), **kw, **style[key], label=f"{key}-Tracks",
+                     weights=peso(len(phi), N_tracks_base[key]))
 
 axes[0].text(0.98, 0.97,texto_pt,transform=axes[0].transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
-axes[0].set_ylabel("Normalized Events")
+axes[0].set_ylabel("Fracción de tracks (pre-GNN)")
 axes[0].set_xlabel("pT [GeV]")
 axes[0].legend(loc = 'center right')
 
@@ -305,7 +334,7 @@ print('Plotting Vertex Parameters')
 d0_data = {key: ak.to_numpy(ak.flatten(tracks[key].d0)) for key in tracks}
 dz_data = {key: ak.to_numpy(ak.flatten(tracks[key].dz)) for key in tracks}
 
-kw = dict(bins=50, density=True, histtype="step", linewidth=2)
+kw = dict(bins=50, histtype="step", linewidth=2)
 
 lim_inf_d0, lim_sup_d0, p_debajo_d0, p_dentro_d0, p_encima_d0 = f.calculo_rangos(-6,6, list(d0_data.values()))
 lim_inf_dz, lim_sup_dz, p_debajo_dz, p_dentro_dz, p_encima_dz = f.calculo_rangos(-30,30, list(dz_data.values()))
@@ -319,13 +348,15 @@ axes[0].text(0.98, 0.97,texto0,transform=axes[0].transAxes,ha="right",va="top",b
 axes[1].text(0.98, 0.97,texto1,transform=axes[1].transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
 
 for i, (key, d0) in enumerate(d0_data.items()):
-        axes[0].hist(d0, range=(lim_inf_d0, lim_sup_d0), **kw, **style[key], label=f"{key}")
+        axes[0].hist(d0, range=(lim_inf_d0, lim_sup_d0), **kw, **style[key], label=f"{key}",
+                     weights=peso(len(d0), N_tracks_base[key]))
 
 for j, (key, dz) in enumerate(dz_data.items()):
-        axes[1].hist(dz, range=(lim_inf_dz, lim_sup_dz), **kw, **style[key], label=f"{key}")
+        axes[1].hist(dz, range=(lim_inf_dz, lim_sup_dz), **kw, **style[key], label=f"{key}",
+                     weights=peso(len(dz), N_tracks_base[key]))
 
 axes[0].set_xlabel(r"$d_0$ [mm]")
-axes[0].set_ylabel("Normalize Number of Tracks")
+axes[0].set_ylabel("Fracción de tracks (pre-GNN)")
 axes[0].set_yscale('log')
 axes[0].set_title('Transverse displacement (d0)')
 
@@ -362,12 +393,13 @@ plt.text(0.98, 0.97,texto0,transform=plt.gca().transAxes,ha="right",va="top",bbo
 plt.text(0.98, 0.8, Data_text_ID_tracks, transform=plt.gca().transAxes,
         ha="right", va="top", fontsize=10, family="DejaVu Serif")
 
-# density=True para poder comparar las formas antes y después de la GNN
+# normalizado por los eventos pre-GNN: la curva post-GNN cae segun la eficiencia
 for i, (key, ntrk) in enumerate(ntrk_data.items()):
-        plt.hist(ntrk, bins=200, density=True, range=(lim_inf_ntrk, lim_sup_ntrk), histtype="step", linewidth=2, **style[key], label=f"{key}")
+        plt.hist(ntrk, bins=200, range=(lim_inf_ntrk, lim_sup_ntrk), histtype="step", linewidth=2,
+                 **style[key], label=f"{key}", weights=peso(len(ntrk), N_events_base[key]))
 
 plt.xlabel(r"Number of Tracks")
-plt.ylabel("Normalized Events")
+plt.ylabel("Fracción de eventos (pre-GNN)")
 plt.grid()
 plt.legend(loc = 'upper left')
 
@@ -437,6 +469,10 @@ Observables = build_observables(Selection_dictionary)               # Calculo lo
 
 ncols = len(Observables)
 
+# eventos que pasan 2tau+2b en la muestra PRE-GNN: denominador de los
+# observables de pares, compartido por la curva pre y la post
+N_sel_base = {key: len(Selection_dictionary[base_of(key)]["taus"]) for key in Selection_dictionary}
+
 
 # ============================================================================
 # Aceptancies
@@ -493,7 +529,7 @@ print('Plotting Num of Taus and Bjets per event')
 lim_inf_Ntaus, lim_sup_Ntaus, p_debajo_Ntaus, p_dentro_Ntaus, p_encima_Ntaus = f.calculo_rangos(0, 10, list(NTaus.values()))
 lim_inf_Nbjets, lim_sup_Nbjets, p_debajo_Nbjets, p_dentro_Nbjets, p_encima_Nbjets = f.calculo_rangos(0, 10, list(NBjets.values()))
 
-kw = dict(bins=10, density=True, histtype="step", linewidth=2)
+kw = dict(bins=10, histtype="step", linewidth=2)
 
 fig, axes = plt.subplots(1, 2, figsize=(15,5), sharey=True)
 
@@ -501,15 +537,19 @@ axes[0].text(0.98, 0.97, Data_text_ID_jets, transform=axes[0].transAxes,
         ha="right", va="top", fontsize=10, family="DejaVu Serif")
 
 for key, arr in NTaus.items():
-    axes[0].hist(ak.to_numpy(arr), range=(lim_inf_Ntaus, lim_sup_Ntaus), **kw, **style[key], label=key)
+    a = ak.to_numpy(arr)
+    axes[0].hist(a, range=(lim_inf_Ntaus, lim_sup_Ntaus), **kw, **style[key], label=key,
+                 weights=peso(len(a), N_events_base[key]))
 
 axes[0].set_xlabel(r"Number of Taus per event")
-axes[0].set_ylabel("Normalized Events")
+axes[0].set_ylabel("Fracción de eventos (pre-GNN)")
 axes[0].legend(loc = "center right")
 axes[0].grid(alpha=0.3)
 
 for key, arr in NBjets.items():
-    axes[1].hist(ak.to_numpy(arr), range=(lim_inf_Nbjets, lim_sup_Nbjets), **kw, **style[key], label=key)
+    a = ak.to_numpy(arr)
+    axes[1].hist(a, range=(lim_inf_Nbjets, lim_sup_Nbjets), **kw, **style[key], label=key,
+                 weights=peso(len(a), N_events_base[key]))
 axes[1].set_xlabel(r"Number of b-jets per event")
 axes[1].legend(loc = "center right")
 axes[1].grid(alpha=0.3)
@@ -543,15 +583,16 @@ for key, (li, ls, p_deb, p_den, p_enc) in rangos.items():
                    f"Encima de {ls} GeV: {p_enc:.2f}%")
 
 labels = [r"$\tau_{1, \text{vis}}$", r"$\tau_{2, \text{vis}}$", r"$b\text{-}jet_1$", r"$b\text{-}jet_2$"]
-kw = dict(bins=50, range=(0,500), density=True, histtype="step", linewidth=2)
+kw = dict(bins=50, range=(0,500), histtype="step", linewidth=2)
 
 fig, axes = plt.subplots(1, len(Observables.keys()), figsize=(5.5*ncols,5), sharey=True, squeeze=False)
 axes = axes[0]
 for i, (key) in enumerate(Selection_dictionary.keys()):
-        axes[i].hist(tau1_pt_data[key], **kw, label=labels[0])
-        axes[i].hist(tau2_pt_data[key], **kw, label=labels[1])
-        axes[i].hist(bjet1_pt_data[key], **kw, label=labels[2])
-        axes[i].hist(bjet2_pt_data[key], **kw, label=labels[3])
+        w = peso(len(tau1_pt_data[key]), N_sel_base[key])
+        axes[i].hist(tau1_pt_data[key], **kw, weights=w, label=labels[0])
+        axes[i].hist(tau2_pt_data[key], **kw, weights=w, label=labels[1])
+        axes[i].hist(bjet1_pt_data[key], **kw, weights=w, label=labels[2])
+        axes[i].hist(bjet2_pt_data[key], **kw, weights=w, label=labels[3])
         axes[i].set_title(fr"{key}")
         axes[i].set_xlabel("pT [GeV]")
         axes[i].grid()
@@ -561,7 +602,7 @@ for i, (key) in enumerate(Selection_dictionary.keys()):
 
 axes[0].text(0.98, 0.8, Data_text_ID_jets, transform=axes[0].transAxes,
         ha="right", va="top", fontsize=10, family="DejaVu Serif")
-axes[0].set_ylabel("Normalized Events")
+axes[0].set_ylabel("Fracción de eventos (pre-GNN)")
 
 plt.tight_layout()
 plt.savefig(f"{SubFolder_Jets}/pt_distribution.png", dpi=300)
@@ -588,9 +629,13 @@ for r, (k_tt, k_bb, (lo, hi), nbins, xlabel, lab_tt, lab_bb) in enumerate(filas)
         ax = axes[r, c]
         li, ls, p_deb, p_den, p_enc = f.calculo_rangos(lo, hi, [Observables[key][k_tt], Observables[key][k_bb]])
 
-        kw = dict(bins=nbins, density=True, range=(li, ls), histtype="step", linewidth=2)
-        ax.hist(ak.to_numpy(Observables[key][k_tt]), label=lab_tt, **kw)
-        ax.hist(ak.to_numpy(Observables[key][k_bb]), label=lab_bb, **kw)
+        a_tt = ak.to_numpy(Observables[key][k_tt])
+        a_bb = ak.to_numpy(Observables[key][k_bb])
+        w = peso(len(a_tt), N_sel_base[key])
+
+        kw = dict(bins=nbins, range=(li, ls), histtype="step", linewidth=2, weights=w)
+        ax.hist(a_tt, label=lab_tt, **kw)
+        ax.hist(a_bb, label=lab_bb, **kw)
 
         ax.set_xlabel(xlabel)
         ax.legend(loc="lower right", fontsize=9)
@@ -605,8 +650,8 @@ for r, (k_tt, k_bb, (lo, hi), nbins, xlabel, lab_tt, lab_bb) in enumerate(filas)
         if r == 0:
             ax.set_title(fr'{key}')
 
-axes[0, 0].set_ylabel("Densidad normalizada")
-axes[1, 0].set_ylabel("Densidad normalizada")
+axes[0, 0].set_ylabel("Fracción de eventos (pre-GNN)")
+axes[1, 0].set_ylabel("Fracción de eventos (pre-GNN)")
 
 axes[0, 0].text(0.98, 0.80, Data_text_ID_jets, transform=axes[0, 0].transAxes, ha="right", va="top",
          fontsize=9, family="DejaVu Serif")
@@ -627,11 +672,12 @@ for ax, (k, xlabel, (lo, hi)) in zip(axes, [
         ("m_tautau", r"$M(\tau_{\mathrm{vis}}\tau_{\mathrm{vis}})$ [GeV]", (15, 500)),
         ("m_bb", r"$M(b\bar{b})$ [GeV]", (15, 500))]):
     for key in Observables:
-        ax.hist(ak.to_numpy(Observables[key][k]), bins=30, range=(lo, hi), density=True,
+        a = ak.to_numpy(Observables[key][k])
+        ax.hist(a, bins=30, range=(lo, hi), weights=peso(len(a), N_sel_base[key]),
                 histtype="step", linewidth=2, **style[key],
-                label=f"{key} (N = {len(Observables[key][k])})")
+                label=f"{key} (N = {len(a)})")
     ax.set_xlabel(xlabel)
-    ax.set_ylabel("Normalized Events")
+    ax.set_ylabel("Fracción de eventos (pre-GNN)")
     ax.grid(alpha=0.3)
     ax.legend(fontsize=9)
 axes[1].text(0.98, 0.70, Data_text_ID_jets, transform=axes[1].transAxes,
@@ -663,10 +709,12 @@ plt.text(0.98, 0.84, Data_text_ID_jets, transform=plt.gca().transAxes,
 plt.text(0.98, 0.98,texto_Higgs,transform=plt.gca().transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
 
 for key, arr in Higgs_mass.items():
-    plt.hist(ak.to_numpy(arr), bins=40, density=True, range=(lim_inf_mhh, lim_sup_mhh), histtype="step", linewidth=2, **style[key], label=fr'{key}')
+    a = ak.to_numpy(arr)
+    plt.hist(a, bins=40, range=(lim_inf_mhh, lim_sup_mhh), histtype="step", linewidth=2,
+             **style[key], label=fr'{key}', weights=peso(len(a), N_sel_base[key]))
 
 plt.xlabel(r"$M$ [GeV]")
-plt.ylabel("Eventos")
+plt.ylabel("Fracción de eventos (pre-GNN)")
 plt.legend()
 plt.grid(alpha=0.3)
 
@@ -694,18 +742,20 @@ ax1.text(0.98, 0.80, Data_text_ID_jets, transform=ax1.transAxes,
 ax2.text(0.98, 0.80, Data_text_ID_jets, transform=ax2.transAxes,
         ha="right", va="top", fontsize=10, family="DejaVu Serif")
 
-kw = dict(bins=50,range=(0,6),histtype="step", density = True, linewidth=2)
+kw = dict(bins=50,range=(0,6),histtype="step", linewidth=2)
 
 for key, arr in DeltaR_TT.items():
-    ax1.hist(arr, **kw, **style[key], label=fr"{key}")
+    ax1.hist(arr, **kw, **style[key], label=fr"{key}",
+             weights=peso(len(arr), N_sel_base[key]))
 
 ax1.set_xlabel(r"$\Delta R(\tau_{\text{vis}},\tau_{\text{vis}})$", fontsize=14)
-ax1.set_ylabel("Normalized Events", fontsize=14)
+ax1.set_ylabel("Fracción de eventos (pre-GNN)", fontsize=14)
 ax1.grid(alpha=0.3)
 ax1.legend(fontsize=10)
 
 for key, arr in DeltaR_BB.items():
-    ax2.hist(arr, **kw, **style[key], label=fr"{key}")
+    ax2.hist(arr, **kw, **style[key], label=fr"{key}",
+             weights=peso(len(arr), N_sel_base[key]))
 
 ax2.set_xlabel(r"$\Delta R(b,\bar{b})$", fontsize=14)
 ax2.grid(alpha=0.3)
@@ -820,10 +870,12 @@ plt.text(0.98, 0.84, Data_text_ID_jets, transform=plt.gca().transAxes,
 plt.text(0.98, 0.98,texto_Higgs,transform=plt.gca().transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
 
 for key, arr in DR_of_Higgses.items():
-    plt.hist(ak.to_numpy(arr), bins=40, density=True, range=(lim_inf_dRhh, lim_sup_dRhh), histtype="step", linewidth=2, **style[key], label=fr'{key}')
+    a = ak.to_numpy(arr)
+    plt.hist(a, bins=40, range=(lim_inf_dRhh, lim_sup_dRhh), histtype="step", linewidth=2,
+             **style[key], label=fr'{key}', weights=peso(len(a), N_sel_base[key]))
 
 plt.xlabel(r"$\Delta R(h_{\tau \tau}, h_{bb})$")
-plt.ylabel("Eventos")
+plt.ylabel("Fracción de eventos (pre-GNN)")
 plt.legend()
 plt.grid(alpha=0.3)
 
