@@ -98,7 +98,8 @@ def vectors_buildup(data):
     tracks = ak.zip({"pt": data["Track.PT"], "eta": data["Track.Eta"],
                     "phi": data["Track.Phi"],
                     "mass": ak.zeros_like(data["Track.PT"]),
-                    "charge": data["Track.Charge"],
+                    "charge": data["Track.Charge"] if "Track.Charge" in data.fields
+                    else ak.zeros_like(data["Track.PT"]),
                     "d0":  data["Track.D0"],
                     "dz":  data["Track.DZ"]},
                     with_name="Momentum4D")
