@@ -69,7 +69,7 @@ print(f"Guardado: {OUT_PLOT}")
 
 
 def Asimov(signal, bg):
-    return np.sqrt(2*(bg*np.log(bg/(signal+bg)) + signal))
+    return np.sqrt(2*(bg*np.log(bg/(signal+bg)) + signal)) # CORREGIR! esta no es la que va
 
 working_points = np.linspace(0, 1, 100)
 significancias = []

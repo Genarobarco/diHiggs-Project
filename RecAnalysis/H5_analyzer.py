@@ -41,7 +41,7 @@ N_EPOCH = "049"
 # --- Corte en el clasificador: D = log(p_tau / p_qcd)
 # GNN_WP: eficiencia de señal deseada; el corte en D se elige para que pase esa fracción de la señal.
 # GNN_CUT: si no es None, se usa este valor de D directamente e ignora GNN_WP.
-GNN_WP = 0.80
+GNN_WP = 0.70
 GNN_CUT = None
 
 # nombre de cada muestra : (sufijo de los archivos de test, color)
@@ -159,7 +159,7 @@ Data_text_ID_jets = ("BenchMark: " f"{BenchMark}" "\n"
                 f"Process: {process}" "\n"
                 fr"Delphes: {Delphes}" "\n"
                 r"$\sqrt{s}$" f" = {Energy_label}" "\n"
-                r"MET > 100 GeV" "\n"
+                r"GenMET > 100 GeV" "\n"
                 fr"$p_T$ > {Pre_PT_jet} GeV" "\n"
                 rf"$|\eta| < {Pre_eta_jet}$" "\n"
                 f"{GNN_text}")
@@ -168,7 +168,7 @@ Data_text_ID_tracks = ("BenchMark: " f"{BenchMark}" "\n"
                     f"Process: {process}" "\n"
                     fr"Delphes: {Delphes}" "\n"
                     r"$\sqrt{s}$" f" = {Energy_label}" "\n"
-                    r"MET > 100 GeV" "\n"
+                    r"GenMET > 100 GeV" "\n"
                     fr"$p_T$ > {Pre_PT_track} GeV" "\n"
                     rf"$|\eta| < {Pre_eta_track}$" "\n"
                     f"{GNN_text}")
@@ -478,6 +478,7 @@ N_sel_base = {key: len(Selection_dictionary[base_of(key)]["taus"]) for key in Se
 # Aceptancies
 # ============================================================================
 
+
 print('Calculating Aceptancies')
 
 def doubletag_events(j):
@@ -721,8 +722,6 @@ plt.grid(alpha=0.3)
 plt.tight_layout()
 plt.savefig(f"{SubFolder_Jets}/InvariantMass_distribution.png", dpi=300)
 plt.close()
-
-
 
 
 # ============================================================================
