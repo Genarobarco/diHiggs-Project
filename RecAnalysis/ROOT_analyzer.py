@@ -32,21 +32,21 @@ Pre_eta_jet = 2.5
 Pre_PT_track = 0      # GeV
 Pre_eta_track = 2.5
 
-Delphes = "HL-LHC"
+Delphes = "Prueba3M"
 Energy_label = "14TeV"
 BenchMark = "BM500"
 process = "gg-hhj"
 
 # Paths
 
-# rutas = {
-#     "Prueba": "/home/usuario/Madgraph/projects/gg_hh-LQs/plusjet/output_ggHH_bbtata_BP1_80_*_delphes_events.root",
-# }
-
 rutas = {
-    "LQ - gg > hhj": "/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_*_delphes_events.root",
-    "BG - pp > tthj": "/mnt/R5/gbarco/pp_tthj_1800k/ROOTs/output_pp_tthj_h-tata_1800k_104_*_delphes_events.root", 
+     "Prueba": "/mnt/R5/gbarco/Prueba_MasEstadistica/ROOTs/output_gg_hhj-Prueba_115_*_delphes_events.root",
 }
+
+# rutas = {
+#    "LQ - gg > hhj": "/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_*_delphes_events.root",
+#    "BG - pp > tthj": "/mnt/R5/gbarco/pp_tthj_1800k/ROOTs/output_pp_tthj_h-tata_1800k_104_*_delphes_events.root", 
+#}
 
 # ============================================================================
 # Data Loading
