@@ -106,6 +106,8 @@ n_b = L*sigma_pp_tth_SM*eff_bkg
 
 significancias = np.array(Asimov(n_s[1:], n_b[1:]))
 
+print(significancias)
+
 fig, ax = plt.subplots(figsize=(8, 5.5))
 
 significancias = Asimov(n_s[1:], n_b[1:])
