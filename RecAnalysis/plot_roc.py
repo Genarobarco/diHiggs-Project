@@ -100,8 +100,8 @@ BR_t_Wb = 0.998
 sigma_gg_hh_LQ =  6997     # ab
 sigma_pp_tth_SM = 2926     # ab
 
-n_s = L*sigma_gg_hh_LQ*eff_sig
-n_b = L*sigma_pp_tth_SM*eff_bkg
+n_s = L*sigma_gg_hh_LQ*(2*BR_h_tata*BR_h_bb)*eff_sig
+n_b = L*sigma_pp_tth_SM*(2*BR_h_tata*BR_t_Wb**2)*eff_bkg
 
 
 significancias = np.array(Asimov(n_s[1:], n_b[1:]))
