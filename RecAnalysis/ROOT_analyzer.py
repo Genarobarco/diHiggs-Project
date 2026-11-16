@@ -900,6 +900,22 @@ plt.savefig(f"{SubFolder_Tracks}/Vertex_displacement_ordered_tracks.png", dpi=30
 plt.close()
 
 
+
+print(' ')
+print('====================')
+print('      Diagnose:     ')
+print(' ')
+
+for key in Tracks_truthTaus:
+    n_mat = ak.sum(ak.num(Tracks_truthTaus[key]["tracks_taus"], axis=1))
+    n_ord = ak.sum(ak.num(Ordered_tracks_truthTaus[key]["tracks_taus"], axis=1))
+    print(f"{key}: tau tracks {n_mat}, sobreviven al top-{N_MAX} {n_ord} "
+          f"({100*n_ord/n_mat:.1f}%)")
+
+print(' ')
+print('====================')
+print(' ')
+
 # ============================================================================
 # ===                                                                      ===
 # ===                           JETS ANALYSIS                              ===
