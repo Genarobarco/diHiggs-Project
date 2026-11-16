@@ -343,13 +343,18 @@ print(f"Matching Tracks to Truth Taus with:")
 print(f"DR < {DR_TAU} and pT > {PT_TRACK} GeV")
 print('')
 
-def match_tracks_to_truth_taus(t2, tracks_ev, dr_tau=DR_TAU, pt_track=PT_TRACK):
+def match_tracks_to_truth_taus(gen_ev, tracks_ev, dr_tau=DR_TAU, pt_track=PT_TRACK):
     trk = tracks_ev[tracks_ev.pt > pt_track]
 
+    t2 = gen_ev[(abs(gen_ev.pid) == 15) & (gen_ev.status == 2)]
     tm_all, tp_all = t2[t2.pid > 0], t2[t2.pid < 0]
 
     ok = (ak.num(tm_all, axis=1) >= 1) & (ak.num(tp_all, axis=1) >= 1)
-    taum, taup, trk = tm_all[ok][:, -1], tp_all[ok][:, -1], trk[ok]
+    tm, tp, trk = tm_all[ok], tp_all[ok], trk[ok]
+
+    # el tau del Higgs es el duro; los extra son secundarios del shower (hadrones B)
+    taum = tm[ak.argmax(tm.pt, axis=1, keepdims=True)][:, 0]
+    taup = tp[ak.argmax(tp.pt, axis=1, keepdims=True)][:, 0]
 
     en_m = taum.deltaR(trk) < dr_tau
     en_p = taup.deltaR(trk) < dr_tau
