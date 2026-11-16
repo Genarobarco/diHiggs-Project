@@ -335,7 +335,7 @@ print(' ')
 
 
 # ---- parámetros ----
-DR_TAU   = 0.1    # radio del cono alrededor del tau truth
+DR_TAU   = 0.2    # radio del cono alrededor del tau truth
 PT_TRACK = 1    # umbral mínimo de pT de los tracks [GeV]
 
 print('')
@@ -620,6 +620,285 @@ plt.legend(loc = 'upper left')
 plt.tight_layout()
 plt.savefig(f"{SubFolder_Tracks}/Number_of_Tracks.png", dpi=300)
 plt.close()
+
+
+
+# ============================================================================
+# 50 Tracks de mayor PT
+# ============================================================================
+
+print('Sorting tracks')
+
+N_MAX = 50
+
+tracks_ord = {}
+for key, trk in tracks.items():
+    orden = ak.argsort(trk.pt, axis=1, ascending=False)
+    tracks_ord[key] = trk[orden][:, :N_MAX]
+
+ntrk_ord_data = {key: ak.to_numpy(ak.num(tracks_ord[key], axis=1)) for key in tracks_ord}
+
+lim_inf_ntrk_ord, lim_sup_ntrk_ord, p_debajo_ntrk_ord, p_dentro_ntrk_ord, p_encima_ntrk_ord = f.calculo_rangos(0,250, list(ntrk_ord_data.values()))
+
+texto0 = (f"Debajo de {lim_inf_ntrk_ord}: {p_debajo_ntrk_ord:.2f}%\n"f"Dentro del rango : {p_dentro_ntrk_ord:.2f}%\n"f"Encima de {lim_sup_ntrk_ord} : {p_encima_ntrk_ord:.2f}%")
+
+plt.figure(figsize=(8,6))
+
+plt.text(0.98, 0.97,texto0,transform=plt.gca().transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
+plt.text(0.98, 0.8, Data_text_ID_tracks, transform=plt.gca().transAxes,
+        ha="right", va="top", fontsize=10, family="DejaVu Serif")
+
+for i, (key, ntrk_ord) in enumerate(ntrk_ord_data.items()):
+        plt.hist(ntrk_ord, bins=250, density=False, range=(lim_inf_ntrk_ord, lim_sup_ntrk_ord), histtype="step", linewidth=2, label=f"{key} - Ordered Tracks")
+        
+plt.xlabel(r"Number of Tracks")
+plt.ylabel("Events")
+plt.grid()
+plt.legend(loc = 'upper left')
+
+plt.tight_layout()
+plt.savefig(f"{SubFolder_Tracks}/Number_of_Tracks_Ordered.png", dpi=300)
+plt.close()
+
+
+
+print('Plotting sorted tracks kinematic and geometric variable distributions')
+
+
+# Los tracks de mayor Pt están asociados a taus truth?
+
+# ---- parámetros ----
+DR_TAU   = 0.2    # radio del cono alrededor del tau truth
+PT_TRACK = 1    # umbral mínimo de pT de los tracks [GeV]
+
+def match_tracks_to_truth_taus(gen_ev, tracks_ev, dr_tau=DR_TAU, pt_track=PT_TRACK):
+    trk = tracks_ev[tracks_ev.pt > pt_track]
+
+    t2 = gen_ev[(abs(gen_ev.pid) == 15) & (gen_ev.status == 2)]
+    tm_all, tp_all = t2[t2.pid > 0], t2[t2.pid < 0]
+
+    ok = (ak.num(tm_all, axis=1) >= 1) & (ak.num(tp_all, axis=1) >= 1)
+    tm, tp, trk = tm_all[ok], tp_all[ok], trk[ok]
+
+    # el tau del Higgs es el duro; los extra son secundarios del shower (hadrones B)
+    taum = tm[ak.argmax(tm.pt, axis=1, keepdims=True)][:, 0]
+    taup = tp[ak.argmax(tp.pt, axis=1, keepdims=True)][:, 0]
+
+    en_m = taum.deltaR(trk) < dr_tau
+    en_p = taup.deltaR(trk) < dr_tau
+
+    return {"taum": taum, "taup": taup, "tracks": trk,
+            "en_taum": en_m, "en_taup": en_p,
+            "tracks_taum": trk[en_m], "tracks_taup": trk[en_p],
+            "tracks_taus": trk[en_m | en_p],
+            "n_m": ak.num(trk[en_m], axis=1),
+            "n_p": ak.num(trk[en_p], axis=1),
+            "ok": ok}
+
+Ordered_tracks_truthTaus = {key: match_tracks_to_truth_taus(gen[key], tracks_ord[key]) for key in gen}
+
+for key, m in Ordered_tracks_truthTaus.items():
+    print(f"{key}: ok {ak.sum(m['ok'])}/{len(m['ok'])}  "
+          f"prongs- {np.bincount(ak.to_numpy(m['n_m']), minlength=5)[:5]}  "
+          f"prongs+ {np.bincount(ak.to_numpy(m['n_p']), minlength=5)[:5]}")
+
+bines = np.arange(-0.5, 8.5, 1)
+
+fig, axes = plt.subplots(1, 2, figsize=(13, 5.5), sharey=True)
+
+for ax, campo, lab in [(axes[0], "n_m", r"$\tau^-$ truth"),
+                       (axes[1], "n_p", r"$\tau^+$ truth")]:
+    for key, m in Ordered_tracks_truthTaus.items():
+        a = ak.to_numpy(m[campo])
+        ax.hist(a, bins=bines, histtype="step", linewidth=2, density=True,
+                label=f"{key}  (N={len(a)}, 1p {100*(a==1).mean():.0f}%, "
+                      f"3p {100*(a==3).mean():.0f}%)")
+        
+    ax.text(0.97, 0.87, fr"$\Delta R < {DR_TAU}$, $p_T^{{track}} > {PT_TRACK}$ GeV",
+         ha="right", va="top", fontsize=9, family="DejaVu Serif", transform=ax.transAxes)
+    ax.set_title(lab, fontsize=13)
+    ax.set_xlabel("Tracks en el cono")
+    ax.set_xticks(range(0, 8))
+    ax.grid(alpha=0.3)
+
+axes[0].set_ylabel("Fracción de eventos")
+axes[0].legend(fontsize=8, loc="upper right")
+
+plt.tight_layout(rect=(0, 0, 1, 0.93))
+plt.savefig(f"{SubFolder_Tracks}/Prongs_truth_matched_to_ordered_tracks.png", dpi=300)
+plt.close()
+
+# Que parámetros geométricos y distribuciones cinemáticas tienen estos tracks?
+
+def aplanar(diccionario, campo, sub=None):
+    """dict muestra -> array plano. sub: key interna si el valor es un dict (Tracks_truthTaus)."""
+    salida = {}
+    for key, valor in diccionario.items():
+        arr = valor[sub] if sub is not None else valor
+        salida[key] = ak.to_numpy(ak.flatten(arr[campo]))
+    return salida
+
+def porcentajes(a, lo, hi):
+    """Fracciones debajo / dentro / encima del rango que se va a plotear."""
+    n = len(a)
+    if n == 0:
+        return 0.0, 0.0, 0.0
+    return (100.0 * np.sum(a < lo) / n,
+            100.0 * np.sum((a >= lo) & (a <= hi)) / n,
+            100.0 * np.sum(a > hi) / n)
+
+pt_all, eta_all, phi_all = (aplanar(tracks, c)     for c in ("pt", "eta", "phi"))
+pt_ord, eta_ord, phi_ord = (aplanar(tracks_ord, c) for c in ("pt", "eta", "phi"))
+pt_mat, eta_mat, phi_mat = (aplanar(Tracks_truthTaus, c, sub="tracks_taus") for c in ("pt", "eta", "phi"))
+pt_ord_mat, eta_ord_mat, phi_ord_mat = (aplanar(Ordered_tracks_truthTaus, c, sub="tracks_taus") for c in ("pt", "eta", "phi"))
+
+
+SERIE_REF = "All tracks"      # define el rango y el cuadro de porcentajes
+
+paneles = [
+    dict(series={SERIE_REF: pt_all,  "Matched a taus truth": pt_mat, f"Top-{N_MAX} por pT": pt_ord, "Ordered and matched" : pt_ord_mat},
+         xlabel=r"$p_T$ [GeV]", rango=(0, 100),     unidad=" GeV", phi=False, loc="center right"),
+    dict(series={SERIE_REF: eta_all, "Matched a taus truth": eta_mat, f"Top-{N_MAX} por pT": eta_ord, "Ordered and matched" : eta_ord_mat},
+         xlabel=r"$\eta$",      rango=(-5, 5),      unidad="",     phi=False, loc="upper right"),
+    dict(series={SERIE_REF: phi_all, "Matched a taus truth": phi_mat, f"Top-{N_MAX} por pT": phi_ord, "Ordered and matched" : phi_ord_mat},
+         xlabel=r"$\phi$",      rango=(-3.2, 3.2),  unidad="",     phi=True,  loc="best"),
+]
+
+kw = dict(bins=50, density=True, histtype="step", linewidth=2)
+
+filas = list(rutas.keys())
+n_filas = len(filas)
+
+# Los limites se calculan UNA vez por columna, sobre todas las muestras,
+# para que las filas sean comparables entre si.
+limites = []
+for panel in paneles:
+    lim_inf, lim_sup, *_ = f.calculo_rangos(*panel["rango"], list(panel["series"][SERIE_REF].values()))
+    limites.append((lim_inf, lim_sup))
+
+fig, axes = plt.subplots(n_filas, 3, figsize=(18, 5 * n_filas),
+                         sharex="col", sharey="col", squeeze=False)
+
+for i_fila, key in enumerate(filas):
+    for i_col, panel in enumerate(paneles):
+
+        ax = axes[i_fila][i_col]
+        lim_inf, lim_sup = limites[i_col]
+
+        for nombre_serie, datos in panel["series"].items():
+            if key not in datos:
+                continue
+            ax.hist(datos[key], range=(lim_inf, lim_sup),
+                    label=nombre_serie, **kw)
+
+        # porcentajes de ESTA muestra, en la primera columna de cada fila
+        if i_col == 0:
+            p_debajo, p_dentro, p_encima = porcentajes(
+                panel["series"][SERIE_REF][key], lim_inf, lim_sup
+            )
+            u = panel["unidad"]
+            texto = (f"[{SERIE_REF}]\n"
+                     f"Debajo de {lim_inf}{u} : {p_debajo:.2f}%\n"
+                     f"Dentro del rango : {p_dentro:.2f}%\n"
+                     f"Encima de {lim_sup}{u} : {p_encima:.2f}%")
+            ax.text(0.98, 0.97, texto, transform=ax.transAxes, ha="right", va="top",
+                    bbox=dict(facecolor="white", alpha=0.85))
+            ax.set_ylabel(f"{key}\nDensidad normalizada")
+
+        # el ID del dataset y la leyenda, una sola vez (fila superior)
+        if i_fila == 0:
+            ax.legend(loc=panel["loc"], fontsize=8)
+            if i_col == 0:
+                ax.text(0.98, 0.79, Data_text_ID_tracks, transform=ax.transAxes,
+                        ha="right", va="top", fontsize=10, family="DejaVu Serif")
+
+        # el xlabel solo en la fila de abajo (las columnas comparten eje x)
+        if i_fila == n_filas - 1:
+            ax.set_xlabel(panel["xlabel"])
+
+        ax.grid(alpha=0.3)
+
+        if panel["phi"]:
+            ax.xaxis.set_major_locator(MultipleLocator(np.pi / 2))
+            ax.xaxis.set_major_formatter(FuncFormatter(f.pi_formatter))
+
+plt.tight_layout()
+plt.savefig(f"{SubFolder_Tracks}/Tracks_distributions_ordered_tracks.png", dpi=300)
+plt.show()
+
+d0_all,  dz_all        = (aplanar(tracks, c)     for c in ("d0", "dz"))
+d0_ord,  dz_ord        = (aplanar(tracks_ord, c) for c in ("d0", "dz"))
+d0_mat,  dz_mat        = (aplanar(Tracks_truthTaus, c, sub="tracks_taus") for c in ("d0", "dz"))
+d0_ord_mat, dz_ord_mat = (aplanar(Ordered_tracks_truthTaus, c, sub="tracks_taus") for c in ("d0", "dz"))
+
+SERIE_REF = "All tracks"      # define el rango y el cuadro de porcentajes
+
+paneles = [
+    dict(series={SERIE_REF: d0_all, "Matched a taus truth": d0_mat, f"Top-{N_MAX} por pT": d0_ord, "Ordered and matched": d0_ord_mat},
+         xlabel=r"$d_0$ [mm]", titulo="Transverse displacement (d0)",   rango=(-6, 6),   unidad=" mm", loc="lower center"),
+    dict(series={SERIE_REF: dz_all, "Matched a taus truth": dz_mat, f"Top-{N_MAX} por pT": dz_ord, "Ordered and matched": dz_ord_mat},
+         xlabel=r"$d_z$ [mm]", titulo="Longitudinal displacement (dz)", rango=(-30, 30), unidad=" mm", loc="lower center"),
+]
+
+kw = dict(bins=50, density=True, histtype="step", linewidth=2)
+
+filas = list(rutas.keys())
+n_filas = len(filas)
+
+# Limites una vez por columna, sobre todas las muestras, para que las filas sean comparables.
+limites = []
+for panel in paneles:
+    lim_inf, lim_sup, *_ = f.calculo_rangos(*panel["rango"], list(panel["series"][SERIE_REF].values()))
+    limites.append((lim_inf, lim_sup))
+
+fig, axes = plt.subplots(n_filas, 2, figsize=(14, 5 * n_filas),
+                         sharex="col", sharey=True, squeeze=False)
+
+for i_fila, key in enumerate(filas):
+    for i_col, panel in enumerate(paneles):
+
+        ax = axes[i_fila][i_col]
+        lim_inf, lim_sup = limites[i_col]
+
+        for nombre_serie, datos in panel["series"].items():
+            if key not in datos:
+                continue
+            ax.hist(datos[key], range=(lim_inf, lim_sup),
+                    label=nombre_serie, **kw)
+
+        # porcentajes de ESTA muestra, en las dos columnas: las colas son la fisica
+        p_debajo, p_dentro, p_encima = porcentajes(
+            panel["series"][SERIE_REF][key], lim_inf, lim_sup
+        )
+        u = panel["unidad"]
+        texto = (f"[{SERIE_REF}]\n"
+                 f"Debajo de {lim_inf}{u} : {p_debajo:.2f}%\n"
+                 f"Dentro del rango : {p_dentro:.2f}%\n"
+                 f"Encima de {lim_sup}{u} : {p_encima:.2f}%")
+        ax.text(0.98, 0.97, texto, transform=ax.transAxes, ha="right", va="top",
+                bbox=dict(facecolor="white", alpha=0.85))
+
+        if i_col == 0:
+            ax.set_ylabel(f"{key}\nNormalized Number of Tracks [1/mm]")
+
+        # titulo, leyenda e ID del dataset una sola vez (fila superior)
+        if i_fila == 0:
+            ax.set_title(panel["titulo"])
+            ax.legend(loc=panel["loc"], fontsize=8)
+            if i_col == 0:
+                ax.text(0.98, 0.72, Data_text_ID_tracks, transform=ax.transAxes,
+                        ha="right", va="top", fontsize=10, family="DejaVu Serif")
+
+        if i_fila == n_filas - 1:
+            ax.set_xlabel(panel["xlabel"])
+
+        ax.set_yscale("log")
+        ax.grid(alpha=0.3)
+
+plt.tight_layout()
+plt.savefig(f"{SubFolder_Tracks}/Vertex_displacement_ordered_tracks.png", dpi=300)
+plt.close()
+
 
 # ============================================================================
 # ===                                                                      ===
