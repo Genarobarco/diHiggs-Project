@@ -39,14 +39,15 @@ process = "gg-hhj"
 
 # Paths
 
-rutas = {
-     "Prueba": "/mnt/R5/gbarco/Prueba_MasEstadistica/ROOTs/output_gg_hhj-Prueba_115_*_delphes_events.root",
-}
-
 # rutas = {
-#    "LQ - gg > hhj": "/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_*_delphes_events.root",
-#    "BG - pp > tthj": "/mnt/R5/gbarco/pp_tthj_1800k/ROOTs/output_pp_tthj_h-tata_1800k_104_*_delphes_events.root", 
+#     "Prueba": "/mnt/R5/gbarco/Prueba_MasEstadistica/ROOTs/output_gg_hhj-Prueba_115_*_delphes_events.root",
 #}
+
+rutas = {
+   "LQ - gg > hhj": "/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_0_delphes_events.root",
+   "Nueva simu":  "/mnt/R5/gbarco/BM500_gghhj-3M/ROOTs/output_gg_hhj-3M_116_29_delphes_events.root",
+#   "BG - pp > tthj": "/mnt/R5/gbarco/pp_tthj_1800k/ROOTs/output_pp_tthj_h-tata_1800k_104_*_delphes_events.root", 
+}
 
 # ============================================================================
 # Data Loading
