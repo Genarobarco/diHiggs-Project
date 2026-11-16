@@ -7,7 +7,7 @@ model:
     init_args:
       init_nets:
       - input_name: tracks
-        attach_global: false  # no hay variables de jets: no concatenar contexto global
+        attach_global: false 
         dense_config:
           output_size: &embed_dim 16
           hidden_layers:
@@ -74,7 +74,7 @@ model:
 
 data:
   variables:
-    # sin variables de 'jets': ese dataset solo lleva flavour_label
+    
     tracks:
     - PT
     - Eta
