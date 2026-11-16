@@ -69,15 +69,29 @@ print(f"Guardado: {OUT_PLOT}")
 
 
 def Asimov(signal, bg):
-    return np.sqrt(2*(bg*np.log(bg/(signal+bg)) + signal)) # CORREGIR! esta no es la que va
+    return np.sqrt(-2*((signal + bg)*np.log(bg/(signal+bg)) + signal))
+
+# Luminosity
+
+L = 3000 # ab-1
+
+# Branching Ratios:
+
+BR_h_tata = 0.0672
+BR_h_bb = 0.58
+BR_t_Wb = 0.998
+
+# XS
+
+sigma_gg_hh_LQ =  85514.4  # ab
+sigma_pp_tth_SM = 1 # Buscar en salida de MG
 
 working_points = np.linspace(0, 1, 100)
 significancias = []
 
 for wp in working_points:
-    cut = np.percentile(s_sig, np.clip(100 * (1 - wp), 0, 100))
-    n_s = int(np.sum(s_sig > cut))
-    n_b = int(np.sum(s_bkg > cut))
+    n_s = L*sigma_gg_hh_LQ*(2*BR_h_bb*BR_h_tata)*wp
+    n_b = L*sigma_pp_tth_SM*(2*BR_h_tata*BR_t_Wb**2)
     significancias.append(Asimov(n_s, n_b) if n_b > 0 else np.nan)
 
 significancias = np.array(significancias)
