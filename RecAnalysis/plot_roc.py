@@ -68,12 +68,22 @@ plt.savefig(OUT_PLOT, dpi=200)
 print(f"Guardado: {OUT_PLOT}")
 
 
-def Asimov(signal, bg):
-    return np.sqrt(-2*((signal + bg)*np.log(bg/(signal+bg)) + signal))
+def Asimov(signal, bg, b_min=0.0):
+    s = np.asarray(signal, dtype=float)
+    b = np.asarray(bg,     dtype=float)
+
+    valido = (b > b_min) & (s + b > 0)
+    z = np.full(s.shape, np.nan)
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        s_v, b_v = s[valido], b[valido]
+        z[valido] = np.sqrt(-2.0 * ((s_v + b_v) * np.log(b_v / (s_v + b_v)) + s_v))
+
+    return z
 
 # Luminosity
 
-L = 3000 # ab-1
+L = 3 # ab-1
 
 # Branching Ratios:
 
@@ -83,31 +93,28 @@ BR_t_Wb = 0.998
 
 # XS
 
-sigma_gg_hh_LQ =  85514.4  # ab
-sigma_pp_tth_SM = 1 # Buscar en salida de MG
+# Señal por calculo    85514.4 ab
+# Señal por MG         0.006997 +- 1.871e-05 pb
+# Fondo por MG         0.002926 +- 1.03e-05 pb
 
-working_points = np.linspace(0, 1, 100)
-significancias = []
+sigma_gg_hh_LQ =  6997     # ab
+sigma_pp_tth_SM = 2926     # ab
 
-for wp in working_points:
-    n_s = L*sigma_gg_hh_LQ*(2*BR_h_bb*BR_h_tata)*wp
-    n_b = L*sigma_pp_tth_SM*(2*BR_h_tata*BR_t_Wb**2)
-    significancias.append(Asimov(n_s, n_b) if n_b > 0 else np.nan)
+n_s = L*sigma_gg_hh_LQ*eff_sig
+n_b = L*sigma_pp_tth_SM*eff_bkg
 
-significancias = np.array(significancias)
-i = np.nanargmax(significancias)
-wp_max, sig_max = working_points[i], significancias[i]
+
+significancias = np.array(Asimov(n_s[1:], n_b[1:]))
 
 fig, ax = plt.subplots(figsize=(8, 5.5))
 
-ax.plot(working_points, significancias, lw=1.8, label="Asimov")
-ax.axvline(wp_max, color="red", ls="--", lw=1.2)
-ax.plot(wp_max, sig_max, "r*", ms=15, zorder=5,
-        label=rf"máximo: WP = {wp_max:.1%}, $Z$ = {sig_max:.2f}")
-ax.annotate(rf"WP = {wp_max:.1%}" "\n" rf"$Z_{{max}}$ = {sig_max:.2f}",
-            xy=(wp_max, sig_max), xytext=(12, -28),
-            textcoords="offset points", fontsize=10,
-            bbox=dict(boxstyle="round", facecolor="white", alpha=0.85))
+significancias = Asimov(n_s[1:], n_b[1:])
+wps = eff_sig[1:]
+
+i_max = np.nanargmax(significancias)
+ax.plot(wps, significancias, lw=1.8, label="Asimov")
+ax.plot(wps[i_max], significancias[i_max], "r*", ms=14, zorder=5)
+ax.axvline(wps[i_max], color="r", ls="--", lw=1, alpha=0.6)
 
 ax.set_xlabel(r"Working point ($\epsilon_{sig}$)")
 ax.set_ylabel(r"Significance")
