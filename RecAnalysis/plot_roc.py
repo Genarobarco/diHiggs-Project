@@ -7,10 +7,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # --- Ajustar ---
-
-SAVE_PATH = "/home/gbarco/DiHiggsProject/RecAnalysis/"
-
-
 RUN_DIR = Path("/home/gbarco/DiHiggsProject/OutTrainings/GN2Tracks_v01_20261105-T131007")
 EPOCH = "049"
 OBJ = "jets"  # global_object del entrenamiento
@@ -68,7 +64,7 @@ ax.set_ylim(0, 1.02)
 ax.grid(alpha=0.3)
 ax.legend(loc="lower left")
 plt.tight_layout()
-plt.savefig(f"{SAVE_PATH}{OUT_PLOT}", dpi=200)
+plt.savefig(OUT_PLOT, dpi=200)
 print(f"Guardado: {OUT_PLOT}")
 
 
@@ -85,6 +81,9 @@ def Asimov(signal, bg, b_min=0.0):
 
     return z
 
+
+# ===== Parametros del calculo de significancia =====
+
 # Luminosity
 
 L = 3 # ab-1
@@ -94,31 +93,28 @@ L = 3 # ab-1
 BR_h_tata = 0.0672
 BR_h_bb = 0.58
 BR_t_Wb = 0.998
+BR_W_eu = 0.21 # Probabilidad compartida de decaimiento a e o u
 
 # XS
 
-# Señal por calculo    85514.4 ab
+# Señal por calculo    85514.4               ab
 # Señal por MG         0.006997 +- 1.871e-05 pb
-# Fondo por MG         0.002926 +- 1.03e-05 pb
+# Fondo por MG         0.002926 +- 1.03e-05  pb
 
 sigma_gg_hh_LQ =  85514.4     # ab
-sigma_pp_tth_SM = 2926     # ab
-
-n_s = L*sigma_gg_hh_LQ*(2*BR_h_tata*BR_h_bb)*eff_sig
-n_b = L*sigma_pp_tth_SM*(2*BR_h_tata*BR_t_Wb**2)*eff_bkg
-
-
-
-# ===== Parametros del calculo de significancia =====
+sigma_pp_tth_SM = 2926        # ab
 
 MG_XS_SIG = 6997.0    # ab, matched, muestra YA decaida
 MG_XS_BKG = 2926.0    # ab, matched, muestra YA decaida
 
-f_sig = 2 * BR_h_tata * BR_h_bb        # dos Higgs: (bb,tautau) + (tautau,bb)
-f_bkg = 2 * BR_h_tata * BR_t_Wb**2
+f_sig = 2 * BR_h_tata * BR_h_bb                 # dos Higgs: (bb,tautau) + (tautau,bb)
+f_bkg = BR_h_tata * BR_t_Wb**2 * BR_W_eu**2    
 
 sigma_ef_sig = sigma_gg_hh_LQ  * f_sig
 sigma_ef_bkg = sigma_pp_tth_SM * f_bkg
+
+Ns = L * sigma_ef_sig
+Nb = L * sigma_ef_bkg
 
 L_fb = L * 1000.0
 sep  = "=" * 70
@@ -130,36 +126,23 @@ print("  Branching ratios")
 print(f"    BR(h -> tau+ tau-)         = {BR_h_tata:.4f}")
 print(f"    BR(h -> b b~)              = {BR_h_bb:.4f}")
 print(f"    BR(t -> W b)               = {BR_t_Wb:.4f}")
+print(f"    BR(W -> l vl)              = {BR_W_eu:.4f}")
 print()
 print("  Señal:  gg -> hh,  h -> b b~,  h -> tau+ tau-")
-print(f"    sigma inclusiva            = {sigma_gg_hh_LQ:>12,.1f} ab")
-print(f"    factor BR  2*BRtt*BRbb     = {f_sig:>12.6f}")
-print(f"    sigma efectiva             = {sigma_ef_sig:>12,.1f} ab")
-print(f"    sigma matched MG (decaida) = {MG_XS_SIG:>12,.1f} ab   -> cociente {sigma_ef_sig/MG_XS_SIG:.3f}")
-print(f"    eventos esperados (eff=1)  = {L*sigma_ef_sig:>12,.0f}")
+print("  Fondo:  pp -> tt~h(j),  h -> tau+ tau-,  t -> W b, W -> l nu")
 print()
-print("  Fondo:  pp -> tt~h(j),  h -> tau+ tau-,  W -> l nu")
-print(f"    sigma usada                = {sigma_pp_tth_SM:>12,.1f} ab")
-print(f"    factor BR  2*BRtt*BRtWb^2  = {f_bkg:>12.6f}")
-print(f"    sigma efectiva             = {sigma_ef_bkg:>12,.1f} ab")
-print(f"    sigma matched MG (decaida) = {MG_XS_BKG:>12,.1f} ab   -> cociente {sigma_ef_bkg/MG_XS_BKG:.3f}")
-print(f"    eventos esperados (eff=1)  = {L*sigma_ef_bkg:>12,.0f}")
-print()
-print(f"  S/B inclusivo (eff=1)        = {sigma_ef_sig/sigma_ef_bkg:>12.4f}")
 print(sep)
-
-
 
 # Plot
 
-significancias = np.array(Asimov(n_s[1:], n_b[1:]))
+significancias = np.array(Asimov(Ns, Nb))
 
 print(significancias)
 
 fig, ax = plt.subplots(figsize=(8, 5.5))
 
-significancias = Asimov(n_s[1:], n_b[1:])
-wps = eff_sig[1:]
+significancias = Asimov(Ns, Nb)
+wps = eff_sig
 
 i_max = np.nanargmax(significancias)
 ax.plot(wps, significancias, lw=1.8, label="Asimov")
@@ -172,5 +155,5 @@ ax.grid(alpha=0.3)
 ax.legend(loc="lower center")
 
 fig.tight_layout()
-fig.savefig(f"{SAVE_PATH}Significancia_vs_WP.png", dpi=300)
+fig.savefig(f"Significancia_vs_WP.png", dpi=300)
 plt.close()
