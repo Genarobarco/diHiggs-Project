@@ -12,7 +12,9 @@ EPOCH = "049"
 OBJ = "jets"  # global_object del entrenamiento
 SIG_CLASS = "hadtaujets"  # el score se llama <modelo>_p<clase>
 WPS = [0.6, 0.7, 0.8, 0.9]  # working points a marcar (eficiencia de señal)
-OUT_PLOT = "roc_1-effbg.png"
+
+SAVE_PATH =  '/home/gbarco/DiHiggsProject/RecAnalysis/'
+
 
 trapezoid = getattr(np, "trapezoid", None) or np.trapz  # numpy < 2.0
 
@@ -64,9 +66,8 @@ ax.set_ylim(0, 1.02)
 ax.grid(alpha=0.3)
 ax.legend(loc="lower left")
 plt.tight_layout()
-plt.savefig(OUT_PLOT, dpi=200)
-print(f"Guardado: {OUT_PLOT}")
-
+plt.savefig(f'{SAVE_PATH}/Roc.png', dpi=200)
+plt.close()
 
 def Asimov(signal, bg, b_min=0.0):
     s = np.asarray(signal, dtype=float)
@@ -107,14 +108,16 @@ sigma_pp_tth_SM = 2926        # ab
 MG_XS_SIG = 6997.0    # ab, matched, muestra YA decaida
 MG_XS_BKG = 2926.0    # ab, matched, muestra YA decaida
 
-f_sig = 2 * BR_h_tata * BR_h_bb                 # dos Higgs: (bb,tautau) + (tautau,bb)
-f_bkg = BR_h_tata * BR_t_Wb**2 * BR_W_eu**2    
+# f_sig = 2 * BR_h_tata * BR_h_bb                 # dos Higgs: (bb,tautau) + (tautau,bb)
 
-sigma_ef_sig = sigma_gg_hh_LQ  * f_sig
+f_sig = 1
+f_bkg = 1    
+
+sigma_ef_sig = MG_XS_SIG  * f_sig
 sigma_ef_bkg = sigma_pp_tth_SM * f_bkg
 
-Ns = L * sigma_ef_sig
-Nb = L * sigma_ef_bkg
+Ns = L * sigma_ef_sig * eff_sig
+Nb = L * sigma_ef_bkg * eff_bkg
 
 L_fb = L * 1000.0
 sep  = "=" * 70
@@ -137,8 +140,6 @@ print(sep)
 
 significancias = np.array(Asimov(Ns, Nb))
 
-print(significancias)
-
 fig, ax = plt.subplots(figsize=(8, 5.5))
 
 significancias = Asimov(Ns, Nb)
@@ -155,5 +156,5 @@ ax.grid(alpha=0.3)
 ax.legend(loc="lower center")
 
 fig.tight_layout()
-fig.savefig(f"Significancia_vs_WP.png", dpi=300)
+fig.savefig(f"{SAVE_PATH}Significancia_vs_WP.png", dpi=300)
 plt.close()
