@@ -7,22 +7,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # --- Ajustar ---
-RUN_DIR = Path("/home/gbarco/DiHiggsProject/OutTrainings/GN2Tracks_v01_20261105-T131007")
+OUT_TRAINING_PATH = Path('/home/usuario/VSCode/diHiggs-Project/OutTrainings/GN2Tracks_v01_20261105-T131007/')
 EPOCH = "049"
 OBJ = "jets"  # global_object del entrenamiento
 SIG_CLASS = "hadtaujets"  # el score se llama <modelo>_p<clase>
 WPS = [0.6, 0.7, 0.8, 0.9]  # working points a marcar (eficiencia de señal)
-
-SAVE_PATH =  '/home/gbarco/DiHiggsProject/RecAnalysis/'
 
 
 trapezoid = getattr(np, "trapezoid", None) or np.trapz  # numpy < 2.0
 
 
 def find_test_file(sample):
-    matches = sorted((RUN_DIR / "ckpts").glob(f"epoch={EPOCH}-*__test_{sample}*.h5"))
+    matches = sorted((OUT_TRAINING_PATH / "ckpts").glob(f"epoch={EPOCH}-*__test_{sample}*.h5"))
     if not matches:
-        raise FileNotFoundError(f"No hay test '{sample}' para epoch={EPOCH} en {RUN_DIR / 'ckpts'}")
+        raise FileNotFoundError(f"No hay test '{sample}' para epoch={EPOCH} en {OUT_TRAINING_PATH / 'ckpts'}")
     return matches[0]
 
 
@@ -66,7 +64,7 @@ ax.set_ylim(0, 1.02)
 ax.grid(alpha=0.3)
 ax.legend(loc="lower left")
 plt.tight_layout()
-plt.savefig(f'{SAVE_PATH}/Roc.png', dpi=200)
+plt.savefig(f'{OUT_TRAINING_PATH}/Roc.png', dpi=300)
 plt.close()
 
 def Asimov(signal, bg, b_min=0.0):
@@ -156,5 +154,5 @@ ax.grid(alpha=0.3)
 ax.legend(loc="lower center")
 
 fig.tight_layout()
-fig.savefig(f"{SAVE_PATH}Significancia_vs_WP.png", dpi=300)
+fig.savefig(f"{OUT_TRAINING_PATH}Significancia_vs_WP.png", dpi=300)
 plt.close()
