@@ -227,16 +227,18 @@ E_taus_to_decay  = {key: ak.to_numpy(ak.flatten(t.E))  for key, t in TwoTaus_gen
 X_vertex = {key: ak.to_numpy(ak.flatten(t.vx)) for key, t in TwoTaus_gen.items()}
 Y_vertex = {key: ak.to_numpy(ak.flatten(t.vy)) for key, t in TwoTaus_gen.items()}
 Z_vertex = {key: ak.to_numpy(ak.flatten(t.vz)) for key, t in TwoTaus_gen.items()}
-R_vertex = {key: np.sqrt(X_vertex[key]**2 + Y_vertex[key]**2) for key in X_vertex}
+
+# Calculo toda la distancia recorrida por el truthtau
+R_vertex = {key: np.sqrt(X_vertex[key]**2 + Y_vertex[key]**2 + Z_vertex[key]**2) for key in X_vertex}
 
 # (datos, etiqueta del eje x, rango, nbins, escala log en y)
 paneles = [
-    (X_vertex,         "x [mm]",       (-10, 10), 40, True),
-    (Y_vertex,         "y [mm]",       (-10, 10), 40, True),
-    (Z_vertex,         "z [mm]",       (-50, 50), 40, True),
+    (X_vertex,         "x [mm]",       (-10, 10), 50, True),
+    (Y_vertex,         "y [mm]",       (-10, 10), 50, True),
+    (Z_vertex,         "z [mm]",       (-50, 50), 50, True),
     (PT_taus_to_decay, r"$p_T$ [GeV]", (0, 500),  60, False),
     (E_taus_to_decay,  r"$E$ [GeV]",   (0, 500),  60, False),
-    (R_vertex,         "r [mm]",       (0, 10),   40, True),
+    (R_vertex,         "r [mm]",       (0, 3),   50, True),
 ]
 
 fig, axes = plt.subplots(2, 3, figsize=(16, 9))

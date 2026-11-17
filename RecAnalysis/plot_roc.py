@@ -97,12 +97,56 @@ BR_t_Wb = 0.998
 # Señal por MG         0.006997 +- 1.871e-05 pb
 # Fondo por MG         0.002926 +- 1.03e-05 pb
 
-sigma_gg_hh_LQ =  6997     # ab
+sigma_gg_hh_LQ =  85514.4     # ab
 sigma_pp_tth_SM = 2926     # ab
 
 n_s = L*sigma_gg_hh_LQ*(2*BR_h_tata*BR_h_bb)*eff_sig
 n_b = L*sigma_pp_tth_SM*(2*BR_h_tata*BR_t_Wb**2)*eff_bkg
 
+
+
+# ===== Parametros del calculo de significancia =====
+
+MG_XS_SIG = 6997.0    # ab, matched, muestra YA decaida
+MG_XS_BKG = 2926.0    # ab, matched, muestra YA decaida
+
+f_sig = 2 * BR_h_tata * BR_h_bb        # dos Higgs: (bb,tautau) + (tautau,bb)
+f_bkg = 2 * BR_h_tata * BR_t_Wb**2
+
+sigma_ef_sig = sigma_gg_hh_LQ  * f_sig
+sigma_ef_bkg = sigma_pp_tth_SM * f_bkg
+
+L_fb = L * 1000.0
+sep  = "=" * 70
+
+print(sep); print("  PARAMETROS DEL CALCULO DE SIGNIFICANCIA"); print(sep)
+print(f"  Luminosidad integrada      L = {L:g} ab^-1   ({L_fb:,.0f} fb^-1)")
+print()
+print("  Branching ratios")
+print(f"    BR(h -> tau+ tau-)         = {BR_h_tata:.4f}")
+print(f"    BR(h -> b b~)              = {BR_h_bb:.4f}")
+print(f"    BR(t -> W b)               = {BR_t_Wb:.4f}")
+print()
+print("  Señal:  gg -> hh,  h -> b b~,  h -> tau+ tau-")
+print(f"    sigma inclusiva            = {sigma_gg_hh_LQ:>12,.1f} ab")
+print(f"    factor BR  2*BRtt*BRbb     = {f_sig:>12.6f}")
+print(f"    sigma efectiva             = {sigma_ef_sig:>12,.1f} ab")
+print(f"    sigma matched MG (decaida) = {MG_XS_SIG:>12,.1f} ab   -> cociente {sigma_ef_sig/MG_XS_SIG:.3f}")
+print(f"    eventos esperados (eff=1)  = {L*sigma_ef_sig:>12,.0f}")
+print()
+print("  Fondo:  pp -> tt~h(j),  h -> tau+ tau-,  W -> l nu")
+print(f"    sigma usada                = {sigma_pp_tth_SM:>12,.1f} ab")
+print(f"    factor BR  2*BRtt*BRtWb^2  = {f_bkg:>12.6f}")
+print(f"    sigma efectiva             = {sigma_ef_bkg:>12,.1f} ab")
+print(f"    sigma matched MG (decaida) = {MG_XS_BKG:>12,.1f} ab   -> cociente {sigma_ef_bkg/MG_XS_BKG:.3f}")
+print(f"    eventos esperados (eff=1)  = {L*sigma_ef_bkg:>12,.0f}")
+print()
+print(f"  S/B inclusivo (eff=1)        = {sigma_ef_sig/sigma_ef_bkg:>12.4f}")
+print(sep)
+
+
+
+# Plot
 
 significancias = np.array(Asimov(n_s[1:], n_b[1:]))
 
