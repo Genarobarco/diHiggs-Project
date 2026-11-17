@@ -7,6 +7,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # --- Ajustar ---
+
+SAVE_PATH = "/home/gbarco/DiHiggsProject/RecAnalysis/"
+
+
 RUN_DIR = Path("/home/gbarco/DiHiggsProject/OutTrainings/GN2Tracks_v01_20261105-T131007")
 EPOCH = "049"
 OBJ = "jets"  # global_object del entrenamiento
@@ -64,7 +68,7 @@ ax.set_ylim(0, 1.02)
 ax.grid(alpha=0.3)
 ax.legend(loc="lower left")
 plt.tight_layout()
-plt.savefig(OUT_PLOT, dpi=200)
+plt.savefig(f"{SAVE_PATH}{OUT_PLOT}", dpi=200)
 print(f"Guardado: {OUT_PLOT}")
 
 
@@ -168,5 +172,5 @@ ax.grid(alpha=0.3)
 ax.legend(loc="lower center")
 
 fig.tight_layout()
-fig.savefig(f"Significancia_vs_WP.png", dpi=300)
+fig.savefig(f"{SAVE_PATH}Significancia_vs_WP.png", dpi=300)
 plt.close()
