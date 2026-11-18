@@ -918,6 +918,45 @@ print(' ')
 print('====================')
 print(' ')
 
+
+print('Plotting PT distributions of tracks ordered per event')
+
+# Distribución de PT por evento de tracks_ord
+
+N_EVENTOS = 9        # eventos aleatorios por muestra
+SEED      = 42       # fijo, para que el plot sea reproducible
+
+rng      = np.random.default_rng(SEED)
+columnas = list(rutas.keys())
+
+fig, axes = plt.subplots(1, len(columnas), figsize=(7 * len(columnas), 5),
+                         sharex=True, sharey=True, squeeze=False)
+
+for i_col, key in enumerate(columnas):
+    ax     = axes[0][i_col]
+    n_disp = len(tracks_ord[key])
+    idxs   = np.sort(rng.choice(n_disp, size=min(N_EVENTOS, n_disp), replace=False))
+
+    for idx in idxs:
+        pt = ak.to_numpy(tracks_ord[key][idx].pt)
+        pt_max = pt.max()
+
+        nbins = int(pt_max * 1.25)
+       
+        ax.hist(pt, bins=nbins, histtype="step",
+                linewidth=2, label=f"evento {idx} ({len(pt)} tracks)")
+
+    ax.set_title(key)
+    ax.set_xlabel(r"$p_T$ [GeV]")
+    ax.legend(fontsize=8)
+    ax.grid(alpha=0.3)
+
+axes[0][0].set_ylabel("Tracks")
+
+plt.tight_layout()
+plt.savefig(f"{SubFolder_Tracks}/Tracks_ordered_PT_distribution_per_event.png", dpi=300)
+plt.close()
+
 # ============================================================================
 # ===                                                                      ===
 # ===                           JETS ANALYSIS                              ===
