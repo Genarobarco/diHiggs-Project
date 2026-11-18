@@ -32,7 +32,7 @@ Pre_eta_jet = 2.5
 Pre_PT_track = 0      # GeV
 Pre_eta_track = 2.5
 
-Delphes = "HL-LHC"
+Delphes = "Prueba3M"
 Energy_label = "14TeV"
 BenchMark = "BM500"
 process = "gg-hhj"
@@ -44,8 +44,8 @@ process = "gg-hhj"
 #}
 
 rutas = {
-   "LQ - gg > hhj": "/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_*_delphes_events.root",
-   "Nueva simu":  "/mnt/R5/gbarco/BM500_gghhj-3M/ROOTs/output_gg_hhj-3M_116_*_delphes_events.root",
+#   "LQ - gg > hhj": "/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_*_delphes_events.root",
+   "Nueva simu":  "/mnt/R5/gbarco/BM500_gghhj-3M/ROOTs/output_gg_hhj-3M_116_29_delphes_events.root",
 #  "BG - pp > tthj": "/mnt/R5/gbarco/pp_tthj_1800k/ROOTs/output_pp_tthj_h-tata_1800k_104_*_delphes_events.root", 
 }
 
