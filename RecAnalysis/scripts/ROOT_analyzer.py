@@ -227,18 +227,16 @@ E_taus_to_decay  = {key: ak.to_numpy(ak.flatten(t.E))  for key, t in TwoTaus_gen
 X_vertex = {key: ak.to_numpy(ak.flatten(t.vx)) for key, t in TwoTaus_gen.items()}
 Y_vertex = {key: ak.to_numpy(ak.flatten(t.vy)) for key, t in TwoTaus_gen.items()}
 Z_vertex = {key: ak.to_numpy(ak.flatten(t.vz)) for key, t in TwoTaus_gen.items()}
-
-# Calculo toda la distancia recorrida por el truthtau
-R_vertex = {key: np.sqrt(X_vertex[key]**2 + Y_vertex[key]**2 + Z_vertex[key]**2) for key in X_vertex}
+R_vertex = {key: np.sqrt(X_vertex[key]**2 + Y_vertex[key]**2) for key in X_vertex}
 
 # (datos, etiqueta del eje x, rango, nbins, escala log en y)
 paneles = [
-    (X_vertex,         "x [mm]",       (-10, 10), 50, True),
-    (Y_vertex,         "y [mm]",       (-10, 10), 50, True),
-    (Z_vertex,         "z [mm]",       (-50, 50), 50, True),
+    (X_vertex,         "x [mm]",       (-1, 1), 50, True),
+    (Y_vertex,         "y [mm]",       (-1, 1), 50, True),
+    (Z_vertex,         "z [mm]",       (-5, 5), 50, True),
     (PT_taus_to_decay, r"$p_T$ [GeV]", (0, 500),  60, False),
     (E_taus_to_decay,  r"$E$ [GeV]",   (0, 500),  60, False),
-    (R_vertex,         "r [mm]",       (0, 3),   50, True),
+    (R_vertex,         "r [mm]",       (0, 1),   50, True),
 ]
 
 fig, axes = plt.subplots(2, 3, figsize=(16, 9))
@@ -552,8 +550,8 @@ w_dz_truthtau = {key: np.full(len(dz_truthtau_tracks[key]), 1.0 / N_tracks_total
 
 kw = dict(bins=50, histtype="step", linewidth=2)
 
-lim_inf_d0, lim_sup_d0, p_debajo_d0, p_dentro_d0, p_encima_d0 = f.calculo_rangos(-6,6, list(d0_data.values()))
-lim_inf_dz, lim_sup_dz, p_debajo_dz, p_dentro_dz, p_encima_dz = f.calculo_rangos(-30,30, list(dz_data.values()))
+lim_inf_d0, lim_sup_d0, p_debajo_d0, p_dentro_d0, p_encima_d0 = f.calculo_rangos(-2,2, list(d0_data.values()))
+lim_inf_dz, lim_sup_dz, p_debajo_dz, p_dentro_dz, p_encima_dz = f.calculo_rangos(-5,5, list(dz_data.values()))
 
 texto0 = (f"Debajo de {lim_inf_d0} mm : {p_debajo_d0:.2f}%\n"f"Dentro del rango : {p_dentro_d0:.2f}%\n"f"Encima de {lim_sup_d0} mm : {p_encima_d0:.2f}%")
 texto1 = (f"Debajo de {lim_inf_dz} mm : {p_debajo_dz:.2f}%\n"f"Dentro del rango : {p_dentro_dz:.2f}%\n"f"Encima de {lim_sup_dz} mm : {p_encima_dz:.2f}%")
@@ -662,9 +660,9 @@ plt.tight_layout()
 plt.savefig(f"{SubFolder_Tracks}/Number_of_Tracks_Ordered.png", dpi=300)
 plt.close()
 
-
-
-print('Plotting sorted tracks kinematic and geometric variable distributions')
+print(' ')
+print('====================')
+print('Matching Ordered Tracks to Truth taus')
 
 
 # Los tracks de mayor Pt están asociados a taus truth?
@@ -699,10 +697,29 @@ def match_tracks_to_truth_taus(gen_ev, tracks_ev, dr_tau=DR_TAU, pt_track=PT_TRA
 
 Ordered_tracks_truthTaus = {key: match_tracks_to_truth_taus(gen[key], tracks_ord[key]) for key in gen}
 
+print(' ')
+print('      Diagnose:     ')
+print(' ')
+
+for key in Tracks_truthTaus:
+    n_mat = ak.sum(ak.num(Tracks_truthTaus[key]["tracks_taus"], axis=1))
+    n_ord = ak.sum(ak.num(Ordered_tracks_truthTaus[key]["tracks_taus"], axis=1))
+    print(f"{key}: tau tracks {n_mat}, sobreviven al top-{N_MAX} {n_ord} "
+          f"({100*n_ord/n_mat:.1f}%)")
+
+print(' ')
+
 for key, m in Ordered_tracks_truthTaus.items():
     print(f"{key}: ok {ak.sum(m['ok'])}/{len(m['ok'])}  "
           f"prongs- {np.bincount(ak.to_numpy(m['n_m']), minlength=5)[:5]}  "
           f"prongs+ {np.bincount(ak.to_numpy(m['n_p']), minlength=5)[:5]}")
+
+print(' ')
+print('====================')
+print(' ')
+
+
+print('Plotting sorted tracks kinematic and geometric variable distributions')
 
 bines = np.arange(-0.5, 8.5, 1)
 
@@ -837,9 +854,9 @@ SERIE_REF = "All tracks"      # define el rango y el cuadro de porcentajes
 
 paneles = [
     dict(series={SERIE_REF: d0_all, "Matched a taus truth": d0_mat, f"Top-{N_MAX} por pT": d0_ord, "Ordered and matched": d0_ord_mat},
-         xlabel=r"$d_0$ [mm]", titulo="Transverse displacement (d0)",   rango=(-6, 6),   unidad=" mm", loc="lower center"),
+         xlabel=r"$d_0$ [mm]", titulo="Transverse displacement (d0)",   rango=(-2,2),   unidad=" mm", loc="lower center"),
     dict(series={SERIE_REF: dz_all, "Matched a taus truth": dz_mat, f"Top-{N_MAX} por pT": dz_ord, "Ordered and matched": dz_ord_mat},
-         xlabel=r"$d_z$ [mm]", titulo="Longitudinal displacement (dz)", rango=(-30, 30), unidad=" mm", loc="lower center"),
+         xlabel=r"$d_z$ [mm]", titulo="Longitudinal displacement (dz)", rango=(-5,5), unidad=" mm", loc="lower center"),
 ]
 
 kw = dict(bins=50, density=True, histtype="step", linewidth=2)
@@ -900,23 +917,6 @@ for i_fila, key in enumerate(filas):
 plt.tight_layout()
 plt.savefig(f"{SubFolder_Tracks}/Vertex_displacement_ordered_tracks.png", dpi=300)
 plt.close()
-
-
-
-print(' ')
-print('====================')
-print('      Diagnose:     ')
-print(' ')
-
-for key in Tracks_truthTaus:
-    n_mat = ak.sum(ak.num(Tracks_truthTaus[key]["tracks_taus"], axis=1))
-    n_ord = ak.sum(ak.num(Ordered_tracks_truthTaus[key]["tracks_taus"], axis=1))
-    print(f"{key}: tau tracks {n_mat}, sobreviven al top-{N_MAX} {n_ord} "
-          f"({100*n_ord/n_mat:.1f}%)")
-
-print(' ')
-print('====================')
-print(' ')
 
 
 print('Plotting PT distributions of tracks ordered per event')
