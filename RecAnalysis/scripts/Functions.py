@@ -84,6 +84,17 @@ def preselection_cut(vec, Pt_lowerBond, Eta_absoluteBond):
     return cinematic_mask
 
 
+_avisadas = set()
+
+def campo_o_ceros(data, nombre, ref="Track.PT"):
+    if nombre in data.fields:
+        return data[nombre]
+    if nombre not in _avisadas:
+        print(f"AVISO: la branch '{nombre}' no existe en el archivo; se rellena con ceros.")
+        _avisadas.add(nombre)
+    return ak.zeros_like(data[ref])
+
+
 def vectors_buildup(data):
 
     jets = ak.zip({
@@ -98,8 +109,7 @@ def vectors_buildup(data):
     tracks = ak.zip({"pt": data["Track.PT"], "eta": data["Track.Eta"],
                     "phi": data["Track.Phi"],
                     "mass": ak.zeros_like(data["Track.PT"]),
-                    "charge": data["Track.Charge"] if "Track.Charge" in data.fields
-                    else ak.zeros_like(data["Track.PT"]),
+                    "charge": campo_o_ceros(data, "Track.Charge"),
                     "d0":  data["Track.D0"],
                     "dz":  data["Track.DZ"]},
                     with_name="Momentum4D")
