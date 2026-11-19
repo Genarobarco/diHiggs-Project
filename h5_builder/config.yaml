@@ -28,6 +28,7 @@ tables:
       - Phi
       - DZ
       - D0
+      - Charge
 
   - name: 'Jets'
     n_rows: 10
