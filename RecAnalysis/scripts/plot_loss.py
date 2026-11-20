@@ -1,11 +1,11 @@
 import json
 import matplotlib.pyplot as plt
 
-OUT_TRAINING_PATH = '/home/usuario/VSCode/diHiggs-Project/OutTrainings/GN2Tracks_v01_20261105-T131007/'
+OUT_TRAINING_PATH = '/home/usuario/VSCode/diHiggs-Project/OutTrainings/GN2Tracks_KGC_20261119-T212322'
 N_EPOCHS = 50          # epochs que corrio el entrenamiento
 
-TRAIN = f"{OUT_TRAINING_PATH}train_loss VS step_chart_data.json"
-VAL   = f"{OUT_TRAINING_PATH}val_loss VS step_chart_data.json"
+TRAIN = f"{OUT_TRAINING_PATH}/train_loss VS step_chart_data.json"
+VAL   = f"{OUT_TRAINING_PATH}/val_loss VS step_chart_data.json"
 
 def leer(path):
     """Extrae (x, y) del export JSON de plotly: toma la traza con mas puntos."""
@@ -37,5 +37,5 @@ ax.grid(alpha=0.3)
 ax.legend()
 
 plt.tight_layout()
-plt.savefig(f"{OUT_TRAINING_PATH}loss_vs_epoch.png", dpi=200)
+plt.savefig(f"{OUT_TRAINING_PATH}/loss_vs_epoch.png", dpi=200)
 plt.show()
