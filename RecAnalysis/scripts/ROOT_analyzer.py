@@ -631,10 +631,15 @@ print('Sorting tracks')
 
 N_MAX = 50
 
-tracks_ord = {}
-for key, trk in tracks.items():
-    orden = ak.argsort(trk.pt, axis=1, ascending=False)
-    tracks_ord[key] = trk[orden][:, :N_MAX]
+def PT_hierachy_50_tracks(tracks_entry, N_MAX = 50):
+    tracks_ordenados = {}
+    for key, trk in tracks_entry.items():
+        orden = ak.argsort(trk.pt, axis=1, ascending=False)
+        tracks_ordenados[key] = trk[orden][:, :N_MAX]
+
+    return tracks_ordenados
+
+tracks_ord = PT_hierachy_50_tracks(tracks)
 
 ntrk_ord_data = {key: ak.to_numpy(ak.num(tracks_ord[key], axis=1)) for key in tracks_ord}
 
@@ -666,34 +671,6 @@ print('Matching Ordered Tracks to Truth taus')
 
 
 # Los tracks de mayor Pt están asociados a taus truth?
-
-# ---- parámetros ----
-DR_TAU   = 0.2    # radio del cono alrededor del tau truth
-PT_TRACK = 1    # umbral mínimo de pT de los tracks [GeV]
-
-def match_tracks_to_truth_taus(gen_ev, tracks_ev, dr_tau=DR_TAU, pt_track=PT_TRACK):
-    trk = tracks_ev[tracks_ev.pt > pt_track]
-
-    t2 = gen_ev[(abs(gen_ev.pid) == 15) & (gen_ev.status == 2)]
-    tm_all, tp_all = t2[t2.pid > 0], t2[t2.pid < 0]
-
-    ok = (ak.num(tm_all, axis=1) >= 1) & (ak.num(tp_all, axis=1) >= 1)
-    tm, tp, trk = tm_all[ok], tp_all[ok], trk[ok]
-
-    # el tau del Higgs es el duro; los extra son secundarios del shower (hadrones B)
-    taum = tm[ak.argmax(tm.pt, axis=1, keepdims=True)][:, 0]
-    taup = tp[ak.argmax(tp.pt, axis=1, keepdims=True)][:, 0]
-
-    en_m = taum.deltaR(trk) < dr_tau
-    en_p = taup.deltaR(trk) < dr_tau
-
-    return {"taum": taum, "taup": taup, "tracks": trk,
-            "en_taum": en_m, "en_taup": en_p,
-            "tracks_taum": trk[en_m], "tracks_taup": trk[en_p],
-            "tracks_taus": trk[en_m | en_p],
-            "n_m": ak.num(trk[en_m], axis=1),
-            "n_p": ak.num(trk[en_p], axis=1),
-            "ok": ok}
 
 Ordered_tracks_truthTaus = {key: match_tracks_to_truth_taus(gen[key], tracks_ord[key]) for key in gen}
 
@@ -843,7 +820,8 @@ for i_fila, key in enumerate(filas):
 
 plt.tight_layout()
 plt.savefig(f"{SubFolder_Tracks}/Tracks_distributions_ordered_tracks.png", dpi=300)
-plt.show()
+plt.close()
+
 
 d0_all,  dz_all        = (aplanar(tracks, c)     for c in ("d0", "dz"))
 d0_ord,  dz_ord        = (aplanar(tracks_ord, c) for c in ("d0", "dz"))
@@ -956,6 +934,100 @@ axes[0][0].set_ylabel("Tracks")
 plt.tight_layout()
 plt.savefig(f"{SubFolder_Tracks}/Tracks_ordered_PT_distribution_per_event.png", dpi=300)
 plt.close()
+
+# ============================================================================
+# ===                                                                      ===
+# ===                        CRITERIA ANALYSIS                             ===
+# ===                                                                      ===
+# ============================================================================
+
+print('Selecting Tracks with D0 < 1 mm')
+
+# construyo los tracks con D0 < 1mm
+
+null_D0_tracks = {key: tracks[key][abs(tracks[key].d0) < 1] for key in tracks.keys()}
+
+# los ordeno en pt
+null_tracks_ord = PT_hierachy_50_tracks(null_D0_tracks)
+
+
+# los matcheo con taus_truth
+DR_TAU   = 0.2    # radio del cono alrededor del tau truth
+PT_TRACK = 1    # umbral mínimo de pT de los tracks [GeV]
+
+Null_Tracks_truthTaus = {key: match_tracks_to_truth_taus(gen[key], null_D0_tracks[key]) for key in gen}
+
+
+print('Kinematic distributions of Null Tracks ordered')
+
+pt_data = {key: ak.to_numpy(ak.flatten(tracks[key].pt)) for key in tracks}
+eta_data = {key: ak.to_numpy(ak.flatten(tracks[key].eta)) for key in tracks}
+phi_data = {key: ak.to_numpy(ak.flatten(tracks[key].phi)) for key in tracks}
+
+pt_null_ord = {key: ak.to_numpy(ak.flatten(null_tracks_ord[key].pt)) for key in null_tracks_ord}
+eta_null_ord = {key: ak.to_numpy(ak.flatten(null_tracks_ord[key].eta)) for key in null_tracks_ord}
+phi_null_ord = {key: ak.to_numpy(ak.flatten(null_tracks_ord[key].phi)) for key in null_tracks_ord}
+
+pt_null_matched_ord = {key: ak.to_numpy(ak.flatten(Null_Tracks_truthTaus[key]["tracks_taus"].pt)) for key in Null_Tracks_truthTaus}
+eta_null_matched_ord = {key: ak.to_numpy(ak.flatten(Null_Tracks_truthTaus[key]["tracks_taus"].eta)) for key in Null_Tracks_truthTaus}
+phi_null_matched_ord = {key: ak.to_numpy(ak.flatten(Null_Tracks_truthTaus[key]["tracks_taus"].phi)) for key in Null_Tracks_truthTaus}
+
+lim_inf_pt, lim_sup_pt, p_debajo_pt, p_dentro_pt, p_encima_pt = f.calculo_rangos(0, 100, list(MET_data.values()))
+lim_inf_eta, lim_sup_eta, p_debajo_eta, p_dentro_eta, p_encima_eta = f.calculo_rangos(-5,5, list(eta_data.values()))
+lim_inf_phi, lim_sup_phi, p_debajo_phi, p_dentro_phi, p_encima_phi = f.calculo_rangos(-3.2,3.2, list(phi_data.values()))
+
+texto_pt = (f"Debajo de {lim_inf_pt} GeV : {p_debajo_pt:.2f}%\n"f"Dentro del rango : {p_dentro_pt:.2f}%\n"f"Encima de {lim_sup_pt} GeV : {p_encima_pt:.2f}%")
+texto_eta = (f"Debajo de {lim_inf_eta}: {p_debajo_eta:.2f}%\n"f"Dentro del rango : {p_dentro_eta:.2f}%\n"f"Encima de {lim_sup_eta}: {p_encima_eta:.2f}%")
+texto_phi = (f"Debajo de {lim_inf_phi}: {p_debajo_phi:.2f}%\n"f"Dentro del rango : {p_dentro_phi:.2f}%\n"f"Encima de {lim_sup_phi}: {p_encima_phi:.2f}%")
+
+labels = [r"LQ - Tracks", r"BG - Tracks", r"SM - Tracks"]
+kw = dict(bins=50, density=True, histtype="step", linewidth=2)
+
+fig, axes = plt.subplots(1, 3, figsize=(18,6), sharey=True)
+
+for i, (key, pt) in enumerate(pt_data.items()):
+        axes[0].hist(pt, range=(lim_inf_pt, lim_sup_pt), **kw, label=f"{key}-Tracks")
+        axes[0].hist(pt_null_ord[key], range=(lim_inf_pt, lim_sup_pt), **kw, label=f"{key}-Null Tracks Ordered")
+        axes[0].hist(pt_null_matched_ord[key], range=(lim_inf_pt, lim_sup_pt), **kw, label=f"{key}-Null Matched Tracks Ordered")
+
+for j, (key, eta) in enumerate(eta_data.items()):
+        axes[1].hist(eta, range=(lim_inf_eta, lim_sup_eta), **kw, label=f"{key}-Tracks")
+        axes[1].hist(eta_null_ord[key], range=(lim_inf_eta, lim_sup_eta), **kw, label=f"{key}-Null Tracks Ordered")
+        axes[1].hist(eta_null_matched_ord[key], range=(lim_inf_eta, lim_sup_eta), **kw, label=f"{key}-Null Matched Tracks Ordered ")
+
+for k, (key, phi) in enumerate(phi_data.items()):
+        axes[2].hist(phi, range=(lim_inf_phi, lim_sup_phi), **kw, label=f"{key}-Tracks")
+        axes[2].hist(phi_null_ord[key], range=(lim_inf_phi, lim_sup_phi), **kw, label=f"{key}-Null Tracks Ordered")
+        axes[2].hist(phi_null_matched_ord[key], range=(lim_inf_eta, lim_sup_eta), **kw, label=f"{key}-Null Matched Tracks Ordered")
+        
+axes[0].text(0.98, 0.97,texto_pt,transform=axes[0].transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
+axes[0].set_ylabel("Normalized Events")
+axes[0].set_xlabel("pT [GeV]")
+axes[0].legend(loc = 'center right')
+
+axes[1].text(0.98, 0.97,texto_eta,transform=axes[1].transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
+axes[1].set_xlabel(r"$\eta$")
+axes[1].legend(loc = 'center right')
+
+axes[2].text(0.98, 0.97,texto_phi,transform=axes[2].transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
+axes[2].xaxis.set_major_locator(MultipleLocator(np.pi / 2))
+axes[2].xaxis.set_major_formatter(FuncFormatter(f.pi_formatter))
+axes[2].set_xlabel(r"$\phi$")
+axes[2].legend(loc = 'center right')
+
+for ax in axes:
+        ax.grid()
+        ax.text(0.98, 0.82, Data_text_ID_tracks, transform=ax.transAxes,
+        ha="right", va="top", fontsize=10, family="DejaVu Serif")
+
+
+plt.tight_layout()
+plt.savefig(f"{SubFolder_Tracks}/Tracks_distributions_null_tracks.png", dpi=300)
+plt.close()
+
+
+
+
 
 # ============================================================================
 # ===                                                                      ===
