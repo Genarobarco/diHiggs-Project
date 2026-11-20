@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # --- Ajustar ---
-OUT_TRAINING_PATH = Path('/home/usuario/VSCode/diHiggs-Project/OutTrainings/GN2Tracks_v01_20261105-T131007/')
+OUT_TRAINING_PATH = Path('/home/usuario/VSCode/diHiggs-Project/OutTrainings/GN2Tracks_KGC_20261119-T212322/')
 EPOCH = "049"
 OBJ = "jets"  # global_object del entrenamiento
 SIG_CLASS = "hadtaujets"  # el score se llama <modelo>_p<clase>
