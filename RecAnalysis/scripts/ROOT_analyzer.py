@@ -32,7 +32,7 @@ Pre_eta_jet = 2.5
 Pre_PT_track = 0      # GeV
 Pre_eta_track = 2.5
 
-Delphes = "Prueba3M"
+Delphes = "HL-LHC"
 Energy_label = "14TeV"
 BenchMark = "BM500"
 process = "gg-hhj"
@@ -231,12 +231,12 @@ R_vertex = {key: np.sqrt(X_vertex[key]**2 + Y_vertex[key]**2) for key in X_verte
 
 # (datos, etiqueta del eje x, rango, nbins, escala log en y)
 paneles = [
-    (X_vertex,         "x [mm]",       (-1, 1), 50, True),
-    (Y_vertex,         "y [mm]",       (-1, 1), 50, True),
-    (Z_vertex,         "z [mm]",       (-5, 5), 50, True),
+    (X_vertex,         "x [mm]",       (-1, 1), 100, True),
+    (Y_vertex,         "y [mm]",       (-1, 1), 100, True),
+    (Z_vertex,         "z [mm]",       (-5, 5), 100, True),
     (PT_taus_to_decay, r"$p_T$ [GeV]", (0, 500),  60, False),
     (E_taus_to_decay,  r"$E$ [GeV]",   (0, 500),  60, False),
-    (R_vertex,         "r [mm]",       (0, 1),   50, True),
+    (R_vertex,         "r [mm]",       (0, 1),   100, True),
 ]
 
 fig, axes = plt.subplots(2, 3, figsize=(16, 9))
@@ -548,9 +548,9 @@ w_dz = {key: np.full(len(dz_data[key]), 1.0 / N_tracks_total[key]) for key in N_
 w_d0_truthtau = {key: np.full(len(d0_truthtau_tracks[key]), 1.0 / N_tracks_total[key]) for key in N_tracks_total}
 w_dz_truthtau = {key: np.full(len(dz_truthtau_tracks[key]), 1.0 / N_tracks_total[key]) for key in N_tracks_total}
 
-kw = dict(bins=50, histtype="step", linewidth=2)
+kw = dict(bins=100, histtype="step", linewidth=2)
 
-lim_inf_d0, lim_sup_d0, p_debajo_d0, p_dentro_d0, p_encima_d0 = f.calculo_rangos(-2,2, list(d0_data.values()))
+lim_inf_d0, lim_sup_d0, p_debajo_d0, p_dentro_d0, p_encima_d0 = f.calculo_rangos(-1,1, list(d0_data.values()))
 lim_inf_dz, lim_sup_dz, p_debajo_dz, p_dentro_dz, p_encima_dz = f.calculo_rangos(-5,5, list(dz_data.values()))
 
 texto0 = (f"Debajo de {lim_inf_d0} mm : {p_debajo_d0:.2f}%\n"f"Dentro del rango : {p_dentro_d0:.2f}%\n"f"Encima de {lim_sup_d0} mm : {p_encima_d0:.2f}%")
