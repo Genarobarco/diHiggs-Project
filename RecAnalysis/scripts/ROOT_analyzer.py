@@ -32,7 +32,7 @@ Pre_eta_jet = 2.5
 Pre_PT_track = 0      # GeV
 Pre_eta_track = 2.5
 
-Delphes = "HL-LHC"
+Delphes = "Prueba3M"
 Energy_label = "14TeV"
 BenchMark = "BM500"
 process = "gg-hhj"
@@ -45,7 +45,7 @@ process = "gg-hhj"
 
 rutas = {
    "LQ - gg > hhj": "/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_*_delphes_events.root",
-#   "Nueva simu":  "/mnt/R5/gbarco/BM500_gghhj-3M/ROOTs/output_gg_hhj-3M_116_29_delphes_events.root",
+   "Nueva simu":  "/mnt/R5/gbarco/BM500_gghhj-3M/ROOTs/output_gg_hhj-3M_116_*_delphes_events.root",
    "BG - pp > tthj": "/mnt/R5/gbarco/pp_tthj_1800k/ROOTs/output_pp_tthj_h-tata_1800k_104_*_delphes_events.root", 
 }
 
@@ -227,7 +227,7 @@ E_taus_to_decay  = {key: ak.to_numpy(ak.flatten(t.E))  for key, t in TwoTaus_gen
 X_vertex = {key: ak.to_numpy(ak.flatten(t.vx)) for key, t in TwoTaus_gen.items()}
 Y_vertex = {key: ak.to_numpy(ak.flatten(t.vy)) for key, t in TwoTaus_gen.items()}
 Z_vertex = {key: ak.to_numpy(ak.flatten(t.vz)) for key, t in TwoTaus_gen.items()}
-R_vertex = {key: np.sqrt(X_vertex[key]**2 + Y_vertex[key]**2) for key in X_vertex}
+RT_vertex = {key: np.sqrt(X_vertex[key]**2 + Y_vertex[key]**2 + Z_vertex[key]**2) for key in X_vertex}
 
 # (datos, etiqueta del eje x, rango, nbins, escala log en y)
 paneles = [
@@ -236,7 +236,7 @@ paneles = [
     (Z_vertex,         "z [mm]",       (-5, 5), 100, True),
     (PT_taus_to_decay, r"$p_T$ [GeV]", (0, 500),  60, False),
     (E_taus_to_decay,  r"$E$ [GeV]",   (0, 500),  60, False),
-    (R_vertex,         "r [mm]",       (0, 1),   100, True),
+    (RT_vertex,        r"$r_T$ [mm]",  (0, 1),   100, True),
 ]
 
 fig, axes = plt.subplots(2, 3, figsize=(16, 9))
@@ -551,7 +551,7 @@ w_dz_truthtau = {key: np.full(len(dz_truthtau_tracks[key]), 1.0 / N_tracks_total
 kw = dict(bins=100, histtype="step", linewidth=2)
 
 lim_inf_d0, lim_sup_d0, p_debajo_d0, p_dentro_d0, p_encima_d0 = f.calculo_rangos(-1,1, list(d0_data.values()))
-lim_inf_dz, lim_sup_dz, p_debajo_dz, p_dentro_dz, p_encima_dz = f.calculo_rangos(-5,5, list(dz_data.values()))
+lim_inf_dz, lim_sup_dz, p_debajo_dz, p_dentro_dz, p_encima_dz = f.calculo_rangos(-1,1, list(dz_data.values()))
 
 texto0 = (f"Debajo de {lim_inf_d0} mm : {p_debajo_d0:.2f}%\n"f"Dentro del rango : {p_dentro_d0:.2f}%\n"f"Encima de {lim_sup_d0} mm : {p_encima_d0:.2f}%")
 texto1 = (f"Debajo de {lim_inf_dz} mm : {p_debajo_dz:.2f}%\n"f"Dentro del rango : {p_dentro_dz:.2f}%\n"f"Encima de {lim_sup_dz} mm : {p_encima_dz:.2f}%")
