@@ -616,6 +616,7 @@ ntrk_data = {key: ak.to_numpy(ak.num(tracks[key], axis=1)) for key in tracks}
 ntrk_truthtau = {key: ak.to_numpy(ak.num(Tracks_truthTaus[key]["tracks_taus"], axis=1)) for key in Tracks_truthTaus}
 
 lim_inf_ntrk, lim_sup_ntrk, p_debajo_ntrk, p_dentro_ntrk, p_encima_ntrk = f.calculo_rangos(0,250, list(ntrk_data.values()))
+lim_inf_ntrk_truthtau, lim_sup_ntrk_truthtau, p_debajo_ntrk_truthtau, p_dentro_ntrk_truthtau, p_encima_ntrk_truthtau = f.calculo_rangos(0,50, list(ntrk_truthtau.values()))
 
 texto0 = (f"Debajo de {lim_inf_ntrk}: {p_debajo_ntrk:.2f}%\n"f"Dentro del rango : {p_dentro_ntrk:.2f}%\n"f"Encima de {lim_sup_ntrk} : {p_encima_ntrk:.2f}%")
 
@@ -626,8 +627,8 @@ plt.text(0.98, 0.8, Data_text_ID_tracks, transform=plt.gca().transAxes,
         ha="right", va="top", fontsize=10, family="DejaVu Serif")
 
 for i, (key, ntrk) in enumerate(ntrk_data.items()):
-        plt.hist(ntrk, bins=250, range=(lim_inf_ntrk, lim_sup_ntrk), density = True, histtype="step", linewidth=2, label=f"All Tracks")
-        plt.hist(ntrk_truthtau[key], bins=250, range=(lim_inf_ntrk, lim_sup_ntrk), density = True, histtype="step", linewidth=2, label=f"{key} Truth-Tau Tracks")
+        plt.hist(ntrk, bins=250, range=(lim_inf_ntrk, lim_sup_ntrk), histtype="step", linewidth=2, label=f"All Tracks")
+        plt.hist(ntrk_truthtau[key], bins=50, range=(lim_inf_ntrk_truthtau, lim_sup_ntrk_truthtau), histtype="step", linewidth=2, label=f"{key} Truth-Tau Tracks")
 
 plt.xlabel(r"Number of Tracks")
 plt.ylabel("Normalized Events")
