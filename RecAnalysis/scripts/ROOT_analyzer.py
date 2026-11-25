@@ -12,9 +12,6 @@ from matplotlib.ticker import MultipleLocator, FuncFormatter
 from matplotlib.colors import LogNorm
 import Functions as f
 
-
-
-
 vec.register_awkward()
 
 # ============================================================================
@@ -1134,6 +1131,18 @@ for key in Selection_dictionary.keys():
     print('bjets: ', N_bjet_selected[key] / N_events_selected[key])
     print('')
 
+# ============================================================================
+# Pesos
+# ============================================================================
+
+N_events_MET = {key: len(jets[key]) for key in jets}
+
+def peso(a, N):
+    """1/N por entrada: el histograma queda en fraccion de eventos."""
+    n = len(a)
+    return np.full(n, 1.0 / N) if N else np.zeros(n)
+
+
 
 # ============================================================================
 # Aceptancies
@@ -1193,7 +1202,7 @@ lim_inf_Nbjets, lim_sup_Nbjets, p_debajo_Nbjets, p_dentro_Nbjets, p_encima_Nbjet
 texto_Ntaus = (f"Debajo de {lim_inf_Ntaus} GeV : {p_debajo_Ntaus:.2f}%\n"f"Dentro del rango : {p_dentro_Ntaus:.2f}%\n"f"Encima de {lim_sup_Ntaus} GeV : {p_encima_Ntaus:.2f}%")
 texto_Nbjets = (f"Debajo de {lim_inf_Nbjets} GeV : {p_debajo_Nbjets:.2f}%\n"f"Dentro del rango : {p_dentro_Nbjets:.2f}%\n"f"Encima de {lim_sup_Nbjets} GeV : {p_encima_Nbjets:.2f}%")
 
-kw = dict(bins=10, density=True, histtype="step", linewidth=2)
+kw = dict(bins=10, histtype="step", linewidth=2)
 
 fig, axes = plt.subplots(1, 2, figsize=(15,5), sharey=True)
 
@@ -1201,7 +1210,9 @@ axes[0].text(0.98, 0.97, Data_text_ID_jets, transform=axes[0].transAxes,
         ha="right", va="top", fontsize=10, family="DejaVu Serif")
 
 for key, arr in NTaus.items():
-    axes[0].hist(ak.to_numpy(arr), range=(lim_inf_Ntaus, lim_sup_Ntaus), **kw, label=key)
+    a = ak.to_numpy(arr)
+    axes[0].hist(a, range=(lim_inf_Ntaus, lim_sup_Ntaus),
+                 weights=peso(a, N_events_MET[key]), **kw, label=key)
     
 axes[0].set_xlabel(r"Number of Taus per event")
 axes[0].set_ylabel("Normalized Events")
@@ -1209,7 +1220,10 @@ axes[0].legend(loc = "center right")
 axes[0].grid(alpha=0.3)
 
 for key, arr in NBjets.items():
-    axes[1].hist(ak.to_numpy(arr), range=(lim_inf_Nbjets, lim_sup_Nbjets), **kw, label=key)
+    a = ak.to_numpy(arr)
+    axes[1].hist(a, range=(lim_inf_Nbjets, lim_sup_Nbjets),
+                 weights=peso(a, N_events_MET[key]), **kw, label=key)
+    
 axes[1].set_xlabel(r"Number of b-jets per event")
 axes[1].legend(loc = "center right")
 axes[1].grid(alpha=0.3)
@@ -1243,21 +1257,25 @@ for key, (li, ls, p_deb, p_den, p_enc) in rangos.items():
                    f"Encima de {ls} GeV: {p_enc:.2f}%")
     
 labels = [r"$\tau_{1, \text{vis}}$", r"$\tau_{2, \text{vis}}$", r"$b\text{-}jet_1$", r"$b\text{-}jet_2$"]
-kw = dict(bins=50, range=(0,500), density=True, histtype="step", linewidth=2)
+
+kw = dict(bins=50, range=(0,500), histtype="step", linewidth=2)
 
 fig, axes = plt.subplots(1, len(Observables.keys()), figsize=(5.5*ncols,5), sharey=True, squeeze=False)
 axes = axes[0]
 for i, (key) in enumerate(Selection_dictionary.keys()):
-        axes[i].hist(tau1_pt_data[key], **kw, label=labels[0])
-        axes[i].hist(tau2_pt_data[key], **kw, label=labels[1])
-        axes[i].hist(bjet1_pt_data[key], **kw, label=labels[2])
-        axes[i].hist(bjet2_pt_data[key], **kw, label=labels[3])
-        axes[i].set_title(fr"{key}")
-        axes[i].set_xlabel("pT [GeV]")
-        axes[i].grid()
-        axes[i].legend(loc = 'lower right')
-        axes[i].text(0.98, 0.97, textos_rangos_pt[key], transform=axes[i].transAxes,
-                ha="right", va="top", bbox=dict(facecolor="white", alpha=0.85))
+
+    N = N_events_selected[key]
+
+    axes[i].hist(tau1_pt_data[key], weights=peso(tau1_pt_data[key],  N), **kw, label=labels[0])
+    axes[i].hist(tau2_pt_data[key], weights=peso(tau2_pt_data[key],  N), **kw, label=labels[1])
+    axes[i].hist(bjet1_pt_data[key], weights=peso(bjet1_pt_data[key],  N), **kw, label=labels[2])
+    axes[i].hist(bjet2_pt_data[key], weights=peso(bjet2_pt_data[key],  N), **kw, label=labels[3])
+    axes[i].set_title(fr"{key}")
+    axes[i].set_xlabel("pT [GeV]")
+    axes[i].grid()
+    axes[i].legend(loc = 'lower right')
+    axes[i].text(0.98, 0.97, textos_rangos_pt[key], transform=axes[i].transAxes,
+            ha="right", va="top", bbox=dict(facecolor="white", alpha=0.85))
 
 axes[0].text(0.98, 0.8, Data_text_ID_jets, transform=axes[0].transAxes,
         ha="right", va="top", fontsize=10, family="DejaVu Serif")
@@ -1293,7 +1311,7 @@ for r, (k_tt, k_bb, (lo, hi), nbins, xlabel, lab_tt, lab_bb) in enumerate(filas)
 
         a_tt = ak.to_numpy(Observables[key][k_tt])
         a_bb = ak.to_numpy(Observables[key][k_bb])
-        w = np.full(len(a_tt), 1.0 / len(a_tt))
+        w = peso(a_tt, N_events_selected[key])
 
         kw = dict(bins=nbins, range=(li, ls), histtype="step", linewidth=2, weights=w)
         ax.hist(a_tt, label=lab_tt, **kw)
@@ -1383,7 +1401,7 @@ ax2.text(0.98, 0.80, Data_text_ID_jets, transform=ax2.transAxes,
 kw = dict(bins=50,range=(0,6),histtype="step", density = True, linewidth=2)
 
 for key, arr in DeltaR_TT.items():
-    ax1.hist(arr, **kw, label=fr"{key}")
+    ax1.hist(arr, weights=peso(arr, N_events_selected[key]), **kw, label=fr"{key}")
 
 ax1.set_xlabel(r"$\Delta R(\tau_{\text{vis}},\tau_{\text{vis}})$", fontsize=14)
 ax1.set_ylabel("Normalized Events", fontsize=14)
@@ -1391,7 +1409,7 @@ ax1.grid(alpha=0.3)
 ax1.legend(fontsize=10)
 
 for key, arr in DeltaR_BB.items():
-    ax2.hist(arr, **kw, label=fr"{key}")
+    ax2.hist(arr, weights=peso(arr, N_events_selected[key]), **kw, label=fr"{key}")
 
 ax2.set_xlabel(r"$\Delta R(b,\bar{b})$", fontsize=14)
 ax2.grid(alpha=0.3)
@@ -1507,7 +1525,7 @@ plt.text(0.98, 0.84, Data_text_ID_jets, transform=plt.gca().transAxes,
 plt.text(0.98, 0.98,texto_Higgs,transform=plt.gca().transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
 
 for key, arr in DR_of_Higgses.items():
-    plt.hist(ak.to_numpy(arr), bins=40, density=True, range=(lim_inf_dRhh, lim_sup_dRhh), histtype="step", linewidth=2, label=fr'{key}')
+    plt.hist(ak.to_numpy(arr), bins=40, weights=peso(a, N_events_selected[key]), range=(lim_inf_dRhh, lim_sup_dRhh), histtype="step", linewidth=2, label=fr'{key}')
 
 plt.xlabel(r"$\Delta R(h_{\tau \tau}, h_{bb})$")
 plt.ylabel("Eventos")
