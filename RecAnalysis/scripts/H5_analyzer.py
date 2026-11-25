@@ -34,8 +34,8 @@ BenchMark = "BM500"
 process = "gg-hhj"
 
 # --- Archivos de test (entrada de salt test) y salidas del clasificador (salida de salt test)
-TEST_DIR = Path("/mnt/R5/gbarco/TrainingV01")
-CKPT_DIR = Path("/home/gbarco/DiHiggsProject/OutTrainings/GN2Tracks_v01_20261105-T131007/ckpts")
+TEST_DIR = Path("/mnt/R5/gbarco/TrainingV03_HadAndLepBGs/")
+CKPT_DIR = Path("/home/gbarco/DiHiggsProject/OutTrainings/GN2Tracks_KGC_HadLep_20261125-T112854/ckpts/")
 N_EPOCH = "049"
 
 # --- Corte en el clasificador: D = log(p_tau / p_qcd)
@@ -47,7 +47,7 @@ GNN_CUT = None
 # nombre de cada muestra : (sufijo de los archivos de test, color)
 muestras = {
     "LQ - gg > hhj": ("signal", "tab:blue"),
-    "BG - pp > tthj": ("background", "tab:red"),
+    "BG Had&Lep - pp > tthj": ("background", "tab:red"),
 }
 
 # ============================================================================
