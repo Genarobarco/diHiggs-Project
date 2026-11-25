@@ -483,13 +483,10 @@ axes[0].legend(loc = 'center right')
 
 axes[1].text(0.98, 0.97,texto_eta,transform=axes[1].transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
 axes[1].set_xlabel(r"$\eta$")
-axes[1].legend(loc = 'center right')
 
-axes[2].text(0.98, 0.97,texto_phi,transform=axes[2].transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
 axes[2].xaxis.set_major_locator(MultipleLocator(np.pi / 2))
 axes[2].xaxis.set_major_formatter(FuncFormatter(f.pi_formatter))
 axes[2].set_xlabel(r"$\phi$")
-axes[2].legend(loc = 'center right')
 
 for ax in axes:
         ax.grid()
@@ -1025,15 +1022,12 @@ axes[0].set_ylabel("Normalized Events")
 axes[0].set_xlabel("pT [GeV]")
 axes[0].legend(loc = 'center right')
 
-axes[1].text(0.98, 0.97,texto_eta,transform=axes[1].transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
-axes[1].set_xlabel(r"$\eta$")
-axes[1].legend(loc = 'center right')
 
-axes[2].text(0.98, 0.97,texto_phi,transform=axes[2].transAxes,ha="right",va="top",bbox=dict(facecolor="white", alpha=0.85))
+axes[1].set_xlabel(r"$\eta$")
+
 axes[2].xaxis.set_major_locator(MultipleLocator(np.pi / 2))
 axes[2].xaxis.set_major_formatter(FuncFormatter(f.pi_formatter))
 axes[2].set_xlabel(r"$\phi$")
-axes[2].legend(loc = 'center right')
 
 for ax in axes:
         ax.grid()

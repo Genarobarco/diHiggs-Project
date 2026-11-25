@@ -1,18 +1,35 @@
 #!/usr/bin/env python3
 """
-make_salt_h5.py  (versión simple)
+make_salt_h5.py  (versión unificada: varias rutas de señal + varios fondos)
 
 Toma los .h5 de señal y de fondo generados por h5_dumper.py (cada uno con los
 datasets de Tracks y de Jets) y arma:
 
   pp_output_train.h5            -> tracks + label          (sin Jets)
   pp_output_val.h5              -> tracks + label          (sin Jets)
-  pp_output_test_signal.h5      -> tracks + label + Jets
-  pp_output_test_background.h5  -> tracks + label + Jets
+  pp_output_test_signal.h5      -> tracks + label + Jets + process
+  pp_output_test_background.h5  -> tracks + label + Jets + process
   norm_dict.yaml, class_dict.yaml  (calculados solo con train)
 
 Uso:
-  python make_salt_h5.py --signal 'sig_part*.h5' --background 'bkg_part*.h5' --outdir salida/
+  python make_salt_h5.py \
+      --signal 'sig_carpetaA/*.h5' 'sig_carpetaB/*.h5' \
+      --background 'ttH/*.h5' \
+      --background 'ttZ/*.h5' \
+      --background 'ttW_v1/*.h5' 'ttW_v2/*.h5' \
+      --outdir salida/
+
+  --signal      : una o más rutas/patrones. TODAS se juntan como una única señal.
+  --background  : se repite una vez por proceso de fondo. Cada aparición es un
+                  proceso distinto y puede llevar una o más rutas/patrones
+                  (todas las rutas de una misma aparición son el mismo proceso).
+
+  Una ruta puede ser un patrón entre comillas ('carpeta/*.h5'), un archivo o una
+  carpeta (en ese caso se toman todos los .h5 de la carpeta).
+
+Por defecto se toma la misma cantidad de eventos de cada proceso de fondo (la del
+menor); con --no-balance se usan todos. En los test se agrega el dataset 'process'
+(0 = señal, 1, 2, 3... = cada fondo, en el orden en que se pasan los --background).
 """
 
 import argparse
@@ -34,17 +51,41 @@ LABEL_OUT = "jets"          # así lo lee Salt (global_object: jets, labels: jet
 JETS_OUT = "delphes_jets"   # los Jets de Delphes se guardan con otro nombre para no
                             # chocar con el dataset 'jets' que usa Salt para el label
 
-SIGNAL_LABEL = 0            # índice 0 de class_names -> hadtaujets
-BACKGROUND_LABEL = 1        # índice 1 de class_names -> qcdjets
+SIGNAL_LABEL = 0            # índice 0 de class_names -> señal
+BACKGROUND_LABEL = 1        # índice 1 de class_names -> fondo
 
 
 # ---------------------------------------------------------------------------
-# PASO 1: leer todas las partes de una clase y juntarlas en un solo array
+# PASO 0: convertir una lista de rutas/patrones en una lista de archivos
 # ---------------------------------------------------------------------------
-def read_class(pattern):
-    files = sorted(glob.glob(pattern))
-    if not files:
-        raise FileNotFoundError(f"Ningún archivo coincide con {pattern}")
+def find_files(patterns):
+    files = []
+    for pattern in patterns:
+        path = Path(pattern).expanduser()
+        if path.is_dir():                         # carpeta -> todos sus .h5
+            matches = glob.glob(str(path / "*.h5"))
+        else:                                     # patrón o archivo
+            matches = glob.glob(str(path))
+        if not matches:
+            raise FileNotFoundError(f"Ningún archivo coincide con {pattern}")
+        files.extend(sorted(matches))
+
+    # sacar repetidos (por si dos patrones agarran el mismo archivo), manteniendo el orden
+    unique = []
+    seen = set()
+    for name in files:
+        real = str(Path(name).resolve())
+        if real not in seen:
+            seen.add(real)
+            unique.append(name)
+    return unique
+
+
+# ---------------------------------------------------------------------------
+# PASO 1: leer todos los archivos de un proceso y juntarlos en un solo array
+# ---------------------------------------------------------------------------
+def read_process(patterns):
+    files = find_files(patterns)
 
     tracks_list = []
     jets_list = []
@@ -54,9 +95,50 @@ def read_class(pattern):
             jets_list.append(f[JETS_IN][:])
         print(f"  leído {name}: {len(tracks_list[-1]):,} eventos")
 
+    # todos los archivos tienen que tener la misma estructura para poder juntarlos
+    for name, t, j in zip(files, tracks_list, jets_list):
+        if t.dtype != tracks_list[0].dtype or t.shape[1:] != tracks_list[0].shape[1:]:
+            raise ValueError(f"{name}: los tracks no tienen la misma estructura que {files[0]}")
+        if j.dtype != jets_list[0].dtype or j.shape[1:] != jets_list[0].shape[1:]:
+            raise ValueError(f"{name}: los Jets no tienen la misma estructura que {files[0]}")
+
     tracks = np.concatenate(tracks_list)
     jets = np.concatenate(jets_list)
     return tracks, jets
+
+
+# ---------------------------------------------------------------------------
+# PASO 1b: juntar varios procesos de fondo en un único fondo
+#   - cada --background es un proceso distinto (p.ej. ttH, ttZ, ...)
+#   - con balance=True se toma la MISMA cantidad de eventos de cada proceso
+#     (la del proceso con menos eventos)
+#   - se guarda de qué proceso viene cada evento (1, 2, 3, ...)
+# ---------------------------------------------------------------------------
+def read_backgrounds(groups, balance, rng):
+    tracks_list, jets_list = [], []
+    for number, patterns in enumerate(groups, start=1):
+        print(f"Leyendo fondo {number}: {' '.join(patterns)}")
+        tracks, jets = read_process(patterns)
+        tracks_list.append(tracks)
+        jets_list.append(jets)
+
+    counts = [len(t) for t in tracks_list]
+    print("  eventos por proceso de fondo:", counts)
+
+    if balance and len(groups) > 1:
+        n_keep = min(counts)
+        print(f"  balanceando: se toman {n_keep:,} eventos de cada proceso")
+        for k in range(len(tracks_list)):
+            chosen = np.sort(rng.permutation(counts[k])[:n_keep])  # eventos elegidos al azar
+            tracks_list[k] = tracks_list[k][chosen]
+            jets_list[k] = jets_list[k][chosen]
+
+    process_list = [np.full(len(t), number, dtype="i4") for number, t in enumerate(tracks_list, start=1)]
+
+    tracks = np.concatenate(tracks_list)
+    jets = np.concatenate(jets_list)
+    process = np.concatenate(process_list)
+    return tracks, jets, process
 
 
 # ---------------------------------------------------------------------------
@@ -162,23 +244,40 @@ def make_class_dict(labels_train):
 # ---------------------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--signal", required=True, help="patrón de los .h5 de señal, entre comillas")
-    parser.add_argument("--background", required=True, help="patrón de los .h5 de fondo, entre comillas")
+    parser.add_argument(
+        "--signal", required=True, nargs="+",
+        help="una o más rutas/patrones de señal (se juntan todas como una sola señal)",
+    )
+    parser.add_argument(
+        "--background", required=True, nargs="+", action="append",
+        help="repetir una vez por proceso de fondo; cada uno con una o más rutas/patrones",
+    )
+    parser.add_argument(
+        "--no-balance", action="store_true",
+        help="no igualar la cantidad de eventos entre procesos de fondo (usa todos)",
+    )
     parser.add_argument("--outdir", required=True)
     parser.add_argument("--frac-train", type=float, default=0.8)
     parser.add_argument("--frac-val", type=float, default=0.1)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
+    if args.frac_train + args.frac_val >= 1:
+        parser.error("--frac-train + --frac-val tiene que ser menor que 1 (el resto es test)")
+
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(args.seed)
 
     # PASO 1
-    print("Leyendo señal...")
-    tracks_sig, jets_sig = read_class(args.signal)
-    print("Leyendo fondo...")
-    tracks_bkg, jets_bkg = read_class(args.background)
+    print(f"Leyendo señal: {' '.join(args.signal)}")
+    tracks_sig, jets_sig = read_process(args.signal)
+    tracks_bkg, jets_bkg, process_bkg = read_backgrounds(args.background, not args.no_balance, rng)
+    process_sig = np.zeros(len(tracks_sig), dtype="i4")  # proceso 0 = señal
+
+    # señal y fondo tienen que tener los mismos campos de tracks
+    if tracks_sig.dtype != tracks_bkg.dtype or tracks_sig.shape[1:] != tracks_bkg.shape[1:]:
+        raise ValueError("Los tracks de señal y de fondo no tienen la misma estructura")
 
     # PASO 2
     tracks_sig = prepare_tracks(tracks_sig)
@@ -210,11 +309,13 @@ def main():
     write_h5(outdir / "pp_output_val.h5", {LABEL_OUT: labels_val, TRACKS_OUT: tracks_val})
     write_h5(
         outdir / "pp_output_test_signal.h5",
-        {LABEL_OUT: labels_sig[sig_test], TRACKS_OUT: tracks_sig[sig_test], JETS_OUT: jets_sig[sig_test]},
+        {LABEL_OUT: labels_sig[sig_test], TRACKS_OUT: tracks_sig[sig_test], JETS_OUT: jets_sig[sig_test],
+         "process": process_sig[sig_test]},
     )
     write_h5(
         outdir / "pp_output_test_background.h5",
-        {LABEL_OUT: labels_bkg[bkg_test], TRACKS_OUT: tracks_bkg[bkg_test], JETS_OUT: jets_bkg[bkg_test]},
+        {LABEL_OUT: labels_bkg[bkg_test], TRACKS_OUT: tracks_bkg[bkg_test], JETS_OUT: jets_bkg[bkg_test],
+         "process": process_bkg[bkg_test]},
     )
 
     # PASOS 7 y 8
@@ -228,6 +329,10 @@ def main():
     print(f"  train  {len(sig_train):>10,} {len(bkg_train):>10,}")
     print(f"  val    {len(sig_val):>10,} {len(bkg_val):>10,}")
     print(f"  test   {len(sig_test):>10,} {len(bkg_test):>10,}")
+    print("\nFondo por proceso (train / val / test):")
+    for number, patterns in enumerate(args.background, start=1):
+        n = [int(np.sum(process_bkg[idx] == number)) for idx in (bkg_train, bkg_val, bkg_test)]
+        print(f"  proceso {number} ({' '.join(patterns)}): {n[0]:,} / {n[1]:,} / {n[2]:,}")
 
 
 if __name__ == "__main__":
