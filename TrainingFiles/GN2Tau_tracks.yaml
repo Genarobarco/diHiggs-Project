@@ -76,9 +76,9 @@ data:
   variables:
     
     tracks:
-    #- PT
-    #- Eta
-    #- Phi
+    - PT
+    - Eta
+    - Phi
     - DZ
     - D0
     #- Charge

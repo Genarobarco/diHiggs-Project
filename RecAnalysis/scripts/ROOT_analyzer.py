@@ -4,12 +4,16 @@ import matplotlib.pyplot as plt
 import vector as vec
 import numpy as np
 import pandas as pd
+import glob
 import os
 from pathlib import Path
 from scipy import stats as st
 from matplotlib.ticker import MultipleLocator, FuncFormatter
 from matplotlib.colors import LogNorm
 import Functions as f
+
+
+
 
 vec.register_awkward()
 
@@ -34,18 +38,19 @@ Pre_eta_track = 2.5
 
 Delphes = "HL-LHC"
 Energy_label = "14TeV"
-BenchMark = "BM500"
-process = "gg-hhj"
+BenchMark = "All-BG"
+process = "pp > tthj"
 
 # Paths
 
 rutas = {
-    "LQ - gg > hhj": [
-        "/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_*_delphes_events.root",
-        "/mnt/R5/gbarco/BM500_gghhj-3M/ROOTs/output_gg_hhj-3M_116_*_delphes_events.root",
-    ],
+#    "LQ - gg > hhj": [
+#        "/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_*_delphes_events.root",
+#        "/mnt/R5/gbarco/BM500_gghhj-3M/ROOTs/output_gg_hhj-3M_116_*_delphes_events.root",
+#    ],
    "BG lep - pp > tthj": "/mnt/R5/gbarco/pp_tthj_1800k/ROOTs/output_pp_tthj_h-tata_1800k_104_*_delphes_events.root", 
-   "BG had - pp > tthj": "/mnt/R5/gbarco/pp_tthj-had/output_pp_tthj_had_119_*_delphes_events.root",
+   "BG had - pp > tthj": "/mnt/R5/gbarco/pp_tthj-had/ROOTs/output_pp_tthj_had_119_*_delphes_events.root",
+   "BG semilep - pp > tthj": "/mnt/R5/gbarco/pp_tthj-semilep/ROOTs/output_pp_tthj_had_120_*_delphes_events.root"
 }
 
 
@@ -246,12 +251,12 @@ RT_vertex = {key: np.sqrt(X_vertex[key]**2 + Y_vertex[key]**2 + Z_vertex[key]**2
 
 # (datos, etiqueta del eje x, rango, nbins, escala log en y)
 paneles = [
-    (X_vertex,         "x [mm]",       (-1, 1), 100, True),
-    (Y_vertex,         "y [mm]",       (-1, 1), 100, True),
-    (Z_vertex,         "z [mm]",       (-5, 5), 100, True),
+    (X_vertex,         "x [mm]",       (-10, 10), 200, True),
+    (Y_vertex,         "y [mm]",       (-10, 10), 200, True),
+    (Z_vertex,         "z [mm]",       (-10, 10), 200, True),
     (PT_taus_to_decay, r"$p_T$ [GeV]", (0, 500),  60, False),
     (E_taus_to_decay,  r"$E$ [GeV]",   (0, 500),  60, False),
-    (RT_vertex,        r"$r_T$ [mm]",  (0, 1),   100, True),
+    (RT_vertex,        r"$r_T$ [mm]",  (0, 15),   200, True),
 ]
 
 fig, axes = plt.subplots(2, 3, figsize=(16, 9))
@@ -563,10 +568,10 @@ w_dz = {key: np.full(len(dz_data[key]), 1.0 / N_tracks_total[key]) for key in N_
 w_d0_truthtau = {key: np.full(len(d0_truthtau_tracks[key]), 1.0 / N_tracks_total[key]) for key in N_tracks_total}
 w_dz_truthtau = {key: np.full(len(dz_truthtau_tracks[key]), 1.0 / N_tracks_total[key]) for key in N_tracks_total}
 
-kw = dict(bins=100, histtype="step", linewidth=2)
+kw = dict(bins=200, histtype="step", linewidth=2)
 
-lim_inf_d0, lim_sup_d0, p_debajo_d0, p_dentro_d0, p_encima_d0 = f.calculo_rangos(-1,1, list(d0_data.values()))
-lim_inf_dz, lim_sup_dz, p_debajo_dz, p_dentro_dz, p_encima_dz = f.calculo_rangos(-1,1, list(dz_data.values()))
+lim_inf_d0, lim_sup_d0, p_debajo_d0, p_dentro_d0, p_encima_d0 = f.calculo_rangos(-10,10, list(d0_data.values()))
+lim_inf_dz, lim_sup_dz, p_debajo_dz, p_dentro_dz, p_encima_dz = f.calculo_rangos(-10,10, list(dz_data.values()))
 
 texto0 = (f"Debajo de {lim_inf_d0} mm : {p_debajo_d0:.2f}%\n"f"Dentro del rango : {p_dentro_d0:.2f}%\n"f"Encima de {lim_sup_d0} mm : {p_encima_d0:.2f}%")
 texto1 = (f"Debajo de {lim_inf_dz} mm : {p_debajo_dz:.2f}%\n"f"Dentro del rango : {p_dentro_dz:.2f}%\n"f"Encima de {lim_sup_dz} mm : {p_encima_dz:.2f}%")
