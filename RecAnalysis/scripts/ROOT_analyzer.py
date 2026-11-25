@@ -38,19 +38,25 @@ Pre_eta_track = 2.5
 
 Delphes = "HL-LHC"
 Energy_label = "14TeV"
-BenchMark = "All-BG"
+BenchMark = "Had&Lep"
 process = "pp > tthj"
 
 # Paths
 
 rutas = {
-#    "LQ - gg > hhj": [
-#        "/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_*_delphes_events.root",
-#        "/mnt/R5/gbarco/BM500_gghhj-3M/ROOTs/output_gg_hhj-3M_116_*_delphes_events.root",
-#    ],
+    "LQ - gg > hhj": [
+        "/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_*_delphes_events.root",
+        "/mnt/R5/gbarco/BM500_gghhj-3M/ROOTs/output_gg_hhj-3M_116_*_delphes_events.root",
+    ],
+    
+   "BG - pp > tthj": ["/mnt/R5/gbarco/pp_tthj_1800k/ROOTs/output_pp_tthj_h-tata_1800k_104_*_delphes_events.root",
+    "/mnt/R5/gbarco/pp_tthj-had/ROOTs/output_pp_tthj_had_119_*_delphes_events.root",
+    ],
+
    "BG lep - pp > tthj": "/mnt/R5/gbarco/pp_tthj_1800k/ROOTs/output_pp_tthj_h-tata_1800k_104_*_delphes_events.root", 
    "BG had - pp > tthj": "/mnt/R5/gbarco/pp_tthj-had/ROOTs/output_pp_tthj_had_119_*_delphes_events.root",
-   "BG semilep - pp > tthj": "/mnt/R5/gbarco/pp_tthj-semilep/ROOTs/output_pp_tthj_had_120_*_delphes_events.root"
+
+#   "BG semilep - pp > tthj": "/mnt/R5/gbarco/pp_tthj-semilep/ROOTs/output_pp_tthj_had_120_*_delphes_events.root"
 }
 
 
@@ -81,7 +87,7 @@ def _archivos(paths):
     return salida
 
 
-def load_truth_taus(archivos, step_size="2000 MB"):
+def load_truth_taus(archivos, step_size="10000 MB"):
     """Lee Particle por lotes y conserva solo los taus (status 2),
     con su cuadrivector cartesiano y su vertice."""
     trozos = []
@@ -627,8 +633,8 @@ plt.text(0.98, 0.8, Data_text_ID_tracks, transform=plt.gca().transAxes,
         ha="right", va="top", fontsize=10, family="DejaVu Serif")
 
 for i, (key, ntrk) in enumerate(ntrk_data.items()):
-        plt.hist(ntrk, bins=250, range=(lim_inf_ntrk, lim_sup_ntrk), histtype="step", linewidth=2, label=f"All Tracks")
-        plt.hist(ntrk_truthtau[key], bins=50, range=(lim_inf_ntrk_truthtau, lim_sup_ntrk_truthtau), histtype="step", linewidth=2, label=f"{key} Truth-Tau Tracks")
+        plt.hist(ntrk, bins=250, density = True, range=(lim_inf_ntrk, lim_sup_ntrk), histtype="step", linewidth=2, label=f"All Tracks")
+        plt.hist(ntrk_truthtau[key], bins=50, density = True, range=(lim_inf_ntrk_truthtau, lim_sup_ntrk_truthtau), histtype="step", linewidth=2, label=f"{key} Truth-Tau Tracks")
 
 plt.xlabel(r"Number of Tracks")
 plt.ylabel("Normalized Events")
