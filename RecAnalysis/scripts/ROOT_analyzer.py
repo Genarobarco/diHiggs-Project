@@ -32,22 +32,22 @@ Pre_eta_jet = 2.5
 Pre_PT_track = 0      # GeV
 Pre_eta_track = 2.5
 
-Delphes = "Prueba3M"
+Delphes = "HL-LHC"
 Energy_label = "14TeV"
 BenchMark = "BM500"
 process = "gg-hhj"
 
 # Paths
 
-# rutas = {
-#     "Prueba": "/mnt/R5/gbarco/Prueba_MasEstadistica/ROOTs/output_gg_hhj-Prueba_115_*_delphes_events.root",
-#}
-
 rutas = {
-   "LQ - gg > hhj": "/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_*_delphes_events.root",
-   "Nueva simu":  "/mnt/R5/gbarco/BM500_gghhj-3M/ROOTs/output_gg_hhj-3M_116_*_delphes_events.root",
-   "BG - pp > tthj": "/mnt/R5/gbarco/pp_tthj_1800k/ROOTs/output_pp_tthj_h-tata_1800k_104_*_delphes_events.root", 
+    "LQ - gg > hhj": [
+        "/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_*_delphes_events.root",
+        "/mnt/R5/gbarco/BM500_gghhj-3M/ROOTs/output_gg_hhj-3M_116_*_delphes_events.root",
+    ],
+   "BG lep - pp > tthj": "/mnt/R5/gbarco/pp_tthj_1800k/ROOTs/output_pp_tthj_h-tata_1800k_104_*_delphes_events.root", 
+   "BG had - pp > tthj": "/mnt/R5/gbarco/pp_tthj-had/output_pp_tthj_had_119_*_delphes_events.root",
 }
+
 
 # ============================================================================
 # Data Loading
@@ -65,12 +65,22 @@ truth_keys = ["Particle.PID", "Particle.Status",
               "Particle.Px", "Particle.Py", "Particle.Pz", "Particle.E",
               "Particle.X", "Particle.Y", "Particle.Z"]
 
+def _archivos(paths):
+    """Expande los patrones a una lista concreta y ordenada de archivos."""
+    salida = []
+    for p in ([paths] if isinstance(paths, str) else paths):
+        hits = sorted(glob.glob(p))
+        if not hits:
+            raise FileNotFoundError(f"Ningun archivo matchea: {p}")
+        salida += hits
+    return salida
 
-def load_truth_taus(path, step_size="500 MB"):
+
+def load_truth_taus(archivos, step_size="2000 MB"):
     """Lee Particle por lotes y conserva solo los taus (status 2),
     con su cuadrivector cartesiano y su vertice."""
     trozos = []
-    for batch in up.iterate(f"{path}:Delphes", truth_keys, step_size=step_size):
+    for batch in up.iterate([f"{a}:Delphes" for a in archivos], truth_keys, step_size=step_size):
         es_tau = (abs(batch["Particle.PID"]) == 15) & (batch["Particle.Status"] == 2)
         trozos.append(ak.zip({
             "px":  batch["Particle.Px"][es_tau],
@@ -87,10 +97,15 @@ def load_truth_taus(path, step_size="500 MB"):
 
 
 def data_loader(rutas):
-    reco  = {k: up.concatenate(f"{p}:Delphes", reco_keys) for k, p in rutas.items()}
-    truth = {k: load_truth_taus(p) for k, p in rutas.items()}
+    reco, truth = {}, {}
+    for k, p in rutas.items():
+        archivos = _archivos(p)
+        reco[k]  = up.concatenate([f"{a}:Delphes" for a in archivos], reco_keys)
+        truth[k] = load_truth_taus(archivos)
+        assert len(reco[k]) == len(truth[k]), \
+            f"{k}: reco {len(reco[k])} != truth {len(truth[k])}"
+        print(f"{k}: {len(archivos)} archivos, {len(reco[k]):,} eventos")
     return reco, truth
-
 
 all_data, truth_taus = data_loader(rutas)
 
