@@ -10,7 +10,7 @@ from pathlib import Path
 from scipy import stats as st
 from matplotlib.ticker import MultipleLocator, FuncFormatter
 from matplotlib.colors import LogNorm
-import Functions_V2 as f
+import Functions as f
 
 vec.register_awkward()
 
@@ -35,8 +35,8 @@ Pre_eta_track = 2.5
 
 Delphes = "HL-LHC"
 Energy_label = "14TeV"
-BenchMark = "BM500-HadLep"
-process = "gg_hh-pp_tth"
+BenchMark = "Had&Lep"
+process = "pp > tthj"
 
 # Paths
 #
@@ -57,9 +57,9 @@ process = "gg_hh-pp_tth"
 rutas = {
     "LQ - gg > hhj": {
         "BP1 1.8M": dict(patron="/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_*_delphes_events.root",
-                         xs=6977.0), # ab
+                         xs=6997.0),
         "BP1 3M":   dict(patron="/mnt/R5/gbarco/BM500_gghhj-3M/ROOTs/output_gg_hhj-3M_116_*_delphes_events.root",
-                         xs=6977.0), # ab
+                         xs=6997.0),
     },
 
     "BG - pp > tthj": {
@@ -110,7 +110,7 @@ def _archivos(paths):
 
 # FIX: step_size estaba en "10000 MB", o sea 10 GB por lote, lo que anula el chunking
 #      y vuelve a cargar la branch Particle entera en memoria.
-def load_truth_taus(archivos, step_size="10000 MB"):
+def load_truth_taus(archivos, step_size="500 MB"):
     """Lee Particle por lotes y conserva solo los taus (status 2),
     con su cuadrivector cartesiano y su vertice."""
     trozos = []
@@ -187,6 +187,30 @@ def peso_fisico(key, origen_arr):
     s = w.sum()
     return w / s if s else w
 
+
+# Un color por key y un estilo de linea por subproceso: asi se ve de un vistazo que
+# las curvas finas de un color son las componentes de la gruesa del mismo color.
+COLOR_KEY = {key: c for key, c in zip(rutas.keys(),
+                                      plt.rcParams["axes.prop_cycle"].by_key()["color"])}
+ESTILO_SUB = ["--", ":", "-.", (0, (3, 1, 1, 1))]
+
+LW_TOTAL = 2.4     # grosor de la curva total de cada key
+LW_SUB   = 1.8     # grosor de las curvas de cada subproceso
+
+
+def por_subproceso(key, orig_arr, w_arr):
+    """Itera (nombre, mascara, pesos, estilo) sobre los subprocesos de una key.
+
+    La suma de los histogramas que salen de aca reproduce el histograma total.
+    """
+    for i, nombre in enumerate(subnombres[key]):
+        m = (orig_arr == i)
+        yield nombre, m, w_arr[m], ESTILO_SUB[i % len(ESTILO_SUB)]
+
+
+# Pesos a nivel de generacion, para los plots anteriores al corte de MET.
+W_GEN = {key: peso_fisico(key, origen[key]) for key in origen}
+
 Global_folder_path = f'{saving_path}/{data_to_analyse}'
 
 f.print_sample_info(Delphes, Energy_label, BenchMark, process, data_to_analyse)
@@ -216,12 +240,25 @@ plt.text(0.98, 0.97,texto,transform=plt.gca().transAxes,ha="right",va="top",bbox
 plt.text(0.98, 0.8, Data_text_ID_precut, transform=plt.gca().transAxes,
         ha="right", va="top", fontsize=10, family="DejaVu Serif")
 
+# Este plot es ANTERIOR al corte de MET, asi que el indice y los pesos son los de
+# generacion (origen / W_GEN), no los de post-MET.
 for i, (key, MET) in enumerate(MET_data.items()):
-        plt.hist(MET, bins=50, density=True, range=(lim_inf, lim_sup), histtype="step", linewidth=2, label=f"{key} - MET")
+        a = ak.to_numpy(ak.flatten(MET))
+        plt.hist(a, bins=50, range=(lim_inf, lim_sup), weights=W_GEN[key],
+                 histtype="step", linewidth=LW_TOTAL, color=COLOR_KEY[key],
+                 label=f"{key} - MET")
+
+        if len(subnombres[key]) > 1:
+            for nombre, m, w, ls in por_subproceso(key, origen[key], W_GEN[key]):
+                plt.hist(a[m], bins=50, range=(lim_inf, lim_sup), weights=w,
+                         histtype="step", linewidth=LW_SUB, linestyle=ls,
+                         color=COLOR_KEY[key], label=f"   {nombre}")
+
+plt.axvline(MET_LowerBond, color="0.3", ls="--", lw=1, alpha=0.7)
 
 plt.xlabel(r"Missing Energy Transverse (MET) [GeV]")
-plt.ylabel("Eventos")
-plt.legend(loc = 'center right')
+plt.ylabel("Fracción de eventos")
+plt.legend(loc = 'center right', fontsize=9)
 plt.grid(alpha=0.3)
 
 plt.tight_layout()
@@ -615,7 +652,6 @@ for r, (titulo_fila, eta_d, phi_d) in enumerate(filas):
 
         # FIX: era Data_text_ID_jets en un plot de tracks, o sea mostraba el corte
         #      de pT de jets sobre una distribucion de tracks.
-
         ax.text(0.97, 0.995, Data_text_ID_tracks, ha="right", va="top",
          fontsize=9, family="DejaVu Serif", transform=ax.transAxes, color="white")
 
@@ -1249,23 +1285,6 @@ W_MET = {key: peso_fisico(key, orig_MET[key]) for key in orig_MET}   # una entra
 W_SEL = {key: peso_fisico(key, orig_SEL[key]) for key in orig_SEL}   # una entrada por evento seleccionado
 
 
-# Un color por key y un estilo de linea por subproceso: asi se ve de un vistazo que
-# las curvas finas de un color son las componentes de la gruesa del mismo color.
-COLOR_KEY = {key: c for key, c in zip(rutas.keys(),
-                                      plt.rcParams["axes.prop_cycle"].by_key()["color"])}
-ESTILO_SUB = ["--", ":", "-.", (0, (3, 1, 1, 1))]
-
-
-def por_subproceso(key, orig_arr, w_arr):
-    """Itera (nombre, mascara, pesos, estilo) sobre los subprocesos de una key.
-
-    La suma de los histogramas que salen de aca reproduce el histograma total.
-    """
-    for i, nombre in enumerate(subnombres[key]):
-        m = (orig_arr == i)
-        yield nombre, m, w_arr[m], ESTILO_SUB[i % len(ESTILO_SUB)]
-
-
 print('')
 print('Mezcla por subproceso (pesada por xs), tras la seleccion 2tau+2b:')
 for key in orig_SEL:
@@ -1346,7 +1365,7 @@ lim_inf_Nbjets, lim_sup_Nbjets, p_debajo_Nbjets, p_dentro_Nbjets, p_encima_Nbjet
 texto_Ntaus = (f"Debajo de {lim_inf_Ntaus} GeV : {p_debajo_Ntaus:.2f}%\n"f"Dentro del rango : {p_dentro_Ntaus:.2f}%\n"f"Encima de {lim_sup_Ntaus} GeV : {p_encima_Ntaus:.2f}%")
 texto_Nbjets = (f"Debajo de {lim_inf_Nbjets} GeV : {p_debajo_Nbjets:.2f}%\n"f"Dentro del rango : {p_dentro_Nbjets:.2f}%\n"f"Encima de {lim_sup_Nbjets} GeV : {p_encima_Nbjets:.2f}%")
 
-kw = dict(bins=10, histtype="step", linewidth=2)
+kw = dict(bins=10, histtype="step", linewidth=LW_TOTAL)
 
 fig, axes = plt.subplots(1, 2, figsize=(15,5), sharey=True)
 
@@ -1363,7 +1382,7 @@ for key, arr in NTaus.items():
     if len(subnombres[key]) > 1:
         for nombre, m, w, ls in por_subproceso(key, orig_MET[key], W_MET[key]):
             axes[0].hist(a[m], range=(lim_inf_Ntaus, lim_sup_Ntaus), bins=10,
-                         weights=w, histtype="step", linewidth=1, linestyle=ls,
+                         weights=w, histtype="step", linewidth=LW_SUB, linestyle=ls,
                          color=COLOR_KEY[key], label=f"   {nombre}")
 
 axes[0].set_xlabel(r"Number of Taus per event")
@@ -1378,7 +1397,7 @@ for key, arr in NBjets.items():
     if len(subnombres[key]) > 1:
         for nombre, m, w, ls in por_subproceso(key, orig_MET[key], W_MET[key]):
             axes[1].hist(a[m], range=(lim_inf_Nbjets, lim_sup_Nbjets), bins=10,
-                         weights=w, histtype="step", linewidth=1, linestyle=ls,
+                         weights=w, histtype="step", linewidth=LW_SUB, linestyle=ls,
                          color=COLOR_KEY[key], label=f"   {nombre}")
 
 axes[1].set_xlabel(r"Number of b-jets per event")
@@ -1528,14 +1547,14 @@ plt.text(0.98, 0.98,texto_Higgs,transform=plt.gca().transAxes,ha="right",va="top
 
 for key, arr in Higgs_mass.items():
     plt.hist(ak.to_numpy(arr), bins=40, density=False, range=(lim_inf_mhh, lim_sup_mhh),
-             histtype="step", linewidth=2, label=fr'{key}', weights= w_higgs[key],
+             histtype="step", linewidth=LW_TOTAL, label=fr'{key}', weights= w_higgs[key],
              color=COLOR_KEY[key])
 
     # desglose por subproceso: las finas suman la gruesa
     if len(subnombres[key]) > 1:
         for nombre, m, w, ls in por_subproceso(key, orig_SEL[key], W_SEL[key]):
             plt.hist(ak.to_numpy(arr)[m], bins=40, range=(lim_inf_mhh, lim_sup_mhh),
-                     histtype="step", linewidth=1, linestyle=ls, color=COLOR_KEY[key],
+                     histtype="step", linewidth=LW_SUB, linestyle=ls, color=COLOR_KEY[key],
                      label=f"   {nombre}", weights=w)
 
 plt.xlabel(r"$M$ [GeV]")
@@ -1569,14 +1588,13 @@ ax2.text(0.98, 0.80, Data_text_ID_jets, transform=ax2.transAxes,
 
 # FIX: kw traia density=True ademas de los weights, asi que la normalizacion por
 #      1/N quedaba anulada por la de density.
-
-kw = dict(bins=50,range=(0,6),histtype="step", linewidth=2)
+kw = dict(bins=50,range=(0,6),histtype="step", linewidth=LW_TOTAL)
 
 for key, arr in DeltaR_TT.items():
     ax1.hist(arr, weights=W_SEL[key], color=COLOR_KEY[key], **kw, label=fr"{key}")
     if len(subnombres[key]) > 1:
         for nombre, m, w, ls in por_subproceso(key, orig_SEL[key], W_SEL[key]):
-            ax1.hist(arr[m], bins=50, range=(0,6), histtype="step", linewidth=1,
+            ax1.hist(arr[m], bins=50, range=(0,6), histtype="step", linewidth=LW_SUB,
                      linestyle=ls, color=COLOR_KEY[key], weights=w, label=f"   {nombre}")
 
 ax1.set_xlabel(r"$\Delta R(\tau_{\text{vis}},\tau_{\text{vis}})$", fontsize=14)
@@ -1588,7 +1606,7 @@ for key, arr in DeltaR_BB.items():
     ax2.hist(arr, weights=W_SEL[key], color=COLOR_KEY[key], **kw, label=fr"{key}")
     if len(subnombres[key]) > 1:
         for nombre, m, w, ls in por_subproceso(key, orig_SEL[key], W_SEL[key]):
-            ax2.hist(arr[m], bins=50, range=(0,6), histtype="step", linewidth=1,
+            ax2.hist(arr[m], bins=50, range=(0,6), histtype="step", linewidth=LW_SUB,
                      linestyle=ls, color=COLOR_KEY[key], weights=w, label=f"   {nombre}")
 
 ax2.set_xlabel(r"$\Delta R(b,\bar{b})$", fontsize=14)
@@ -1708,12 +1726,12 @@ plt.text(0.98, 0.98,texto_Higgs,transform=plt.gca().transAxes,ha="right",va="top
 #      quedaba con el valor de un loop anterior, asi que el largo no tenia por que
 #      coincidir y el peso era el de otra distribucion.
 for key, arr in DR_of_Higgses.items():
-    plt.hist(ak.to_numpy(arr), bins=40, weights=W_SEL[key], range=(lim_inf_dRhh, lim_sup_dRhh), histtype="step", linewidth=2, label=fr'{key}', color=COLOR_KEY[key])
+    plt.hist(ak.to_numpy(arr), bins=40, weights=W_SEL[key], range=(lim_inf_dRhh, lim_sup_dRhh), histtype="step", linewidth=LW_TOTAL, label=fr'{key}', color=COLOR_KEY[key])
 
     if len(subnombres[key]) > 1:
         for nombre, m, w, ls in por_subproceso(key, orig_SEL[key], W_SEL[key]):
             plt.hist(ak.to_numpy(arr)[m], bins=40, range=(lim_inf_dRhh, lim_sup_dRhh),
-                     histtype="step", linewidth=1, linestyle=ls, color=COLOR_KEY[key],
+                     histtype="step", linewidth=LW_SUB, linestyle=ls, color=COLOR_KEY[key],
                      weights=w, label=f"   {nombre}")
 
 plt.xlabel(r"$\Delta R(h_{\tau \tau}, h_{bb})$")
