@@ -10,7 +10,7 @@ from pathlib import Path
 from scipy import stats as st
 from matplotlib.ticker import MultipleLocator, FuncFormatter
 from matplotlib.colors import LogNorm
-import Functions as f
+import Functions_V2 as f
 
 vec.register_awkward()
 
@@ -35,8 +35,8 @@ Pre_eta_track = 2.5
 
 Delphes = "HL-LHC"
 Energy_label = "14TeV"
-BenchMark = "Had&Lep"
-process = "pp > tthj"
+BenchMark = "BM500-HadLep"
+process = "gg_hh-pp_tth"
 
 # Paths
 #
@@ -57,9 +57,9 @@ process = "pp > tthj"
 rutas = {
     "LQ - gg > hhj": {
         "BP1 1.8M": dict(patron="/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_*_delphes_events.root",
-                         xs=6997.0),
+                         xs=6977.0), # ab
         "BP1 3M":   dict(patron="/mnt/R5/gbarco/BM500_gghhj-3M/ROOTs/output_gg_hhj-3M_116_*_delphes_events.root",
-                         xs=6997.0),
+                         xs=6977.0), # ab
     },
 
     "BG - pp > tthj": {
@@ -110,7 +110,7 @@ def _archivos(paths):
 
 # FIX: step_size estaba en "10000 MB", o sea 10 GB por lote, lo que anula el chunking
 #      y vuelve a cargar la branch Particle entera en memoria.
-def load_truth_taus(archivos, step_size="500 MB"):
+def load_truth_taus(archivos, step_size="10000 MB"):
     """Lee Particle por lotes y conserva solo los taus (status 2),
     con su cuadrivector cartesiano y su vertice."""
     trozos = []
@@ -615,6 +615,7 @@ for r, (titulo_fila, eta_d, phi_d) in enumerate(filas):
 
         # FIX: era Data_text_ID_jets en un plot de tracks, o sea mostraba el corte
         #      de pT de jets sobre una distribucion de tracks.
+
         ax.text(0.97, 0.995, Data_text_ID_tracks, ha="right", va="top",
          fontsize=9, family="DejaVu Serif", transform=ax.transAxes, color="white")
 
@@ -1568,6 +1569,7 @@ ax2.text(0.98, 0.80, Data_text_ID_jets, transform=ax2.transAxes,
 
 # FIX: kw traia density=True ademas de los weights, asi que la normalizacion por
 #      1/N quedaba anulada por la de density.
+
 kw = dict(bins=50,range=(0,6),histtype="step", linewidth=2)
 
 for key, arr in DeltaR_TT.items():
