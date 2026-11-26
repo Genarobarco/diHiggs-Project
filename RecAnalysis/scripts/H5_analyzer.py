@@ -35,7 +35,7 @@ process = "gg-hhj"
 
 # --- Archivos de test (entrada de salt test) y salidas del clasificador (salida de salt test)
 TEST_DIR = Path("/mnt/R5/gbarco/TrainingV03_HadAndLepBGs/")
-CKPT_DIR = Path("/home/gbarco/DiHiggsProject/OutTrainings/GN2Tracks_KGC_HadLep_20261125-T112854/ckpts/")
+CKPT_DIR = Path("/home/gbarco/DiHiggsProject/OutTrainings/GN2Tracks_KGC_Had/ckpts/")
 N_EPOCH = "049"
 
 # --- Corte en el clasificador: D = log(p_tau / p_qcd)
