@@ -10,7 +10,7 @@ from pathlib import Path
 from scipy import stats as st
 from matplotlib.ticker import MultipleLocator, FuncFormatter
 from matplotlib.colors import LogNorm
-import Functions as f
+import Functions_V2 as f
 
 vec.register_awkward()
 
@@ -35,8 +35,8 @@ Pre_eta_track = 2.5
 
 Delphes = "HL-LHC"
 Energy_label = "14TeV"
-BenchMark = "Had&Lep"
-process = "pp > tthj"
+BenchMark = "BM500-HadLep"
+process = "gg-hhj_pp-tthj"
 
 # Paths
 #
@@ -58,7 +58,7 @@ rutas = {
     "LQ - gg > hhj": {
         "BP1 1.8M": dict(patron="/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_*_delphes_events.root",
                          xs=6997.0),
-        "BP1 3M":   dict(patron="/mnt/R5/gbarco/BM500_gghhj-3M/ROOTs/output_gg_hhj-3M_116_*_delphes_events.root",
+        "BP1 1.2M":   dict(patron="/mnt/R5/gbarco/BM500_gghhj-3M/ROOTs/output_gg_hhj-3M_116_*_delphes_events.root",
                          xs=6997.0),
     },
 
