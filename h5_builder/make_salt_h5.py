@@ -10,6 +10,8 @@ datasets de Tracks y de Jets) y arma:
   pp_output_test_signal.h5      -> tracks + label + Jets + process
   pp_output_test_background.h5  -> tracks + label + Jets + process
   norm_dict.yaml, class_dict.yaml  (calculados solo con train)
+  split_summary.yaml             -> eventos por proceso, fracciones y eventos
+                                    de cada proceso en train / val / test
 
 Uso:
   python make_salt_h5.py \
@@ -27,8 +29,9 @@ Uso:
   Una ruta puede ser un patrón entre comillas ('carpeta/*.h5'), un archivo o una
   carpeta (en ese caso se toman todos los .h5 de la carpeta).
 
-Por defecto se toma la misma cantidad de eventos de cada proceso de fondo (la del
-menor); con --no-balance se usan todos. En los test se agrega el dataset 'process'
+Por defecto se balancea: se toma la misma cantidad de eventos de cada proceso de
+fondo (n_keep = la del menor) y de señal se toman (cantidad de fondos) x n_keep
+eventos. Si la señal no alcanza, se baja n_keep. Con --no-balance se usan todos. En los test se agrega el dataset 'process'
 (0 = señal, 1, 2, 3... = cada fondo, en el orden en que se pasan los --background).
 """
 
@@ -110,11 +113,15 @@ def read_process(patterns):
 # ---------------------------------------------------------------------------
 # PASO 1b: juntar varios procesos de fondo en un único fondo
 #   - cada --background es un proceso distinto (p.ej. ttH, ttZ, ...)
-#   - con balance=True se toma la MISMA cantidad de eventos de cada proceso
-#     (la del proceso con menos eventos)
+#   - con balance=True:
+#       * se toma la MISMA cantidad de eventos de cada proceso de fondo
+#         (n_keep = la del proceso con menos eventos)
+#       * y la señal se ajusta a N_señal = (cantidad de fondos) x n_keep
+#         (eso lo aplica main() con el valor que devuelve esta función)
+#     Si no hay suficiente señal, se baja n_keep para que alcance.
 #   - se guarda de qué proceso viene cada evento (1, 2, 3, ...)
 # ---------------------------------------------------------------------------
-def read_backgrounds(groups, balance, rng):
+def read_backgrounds(groups, balance, rng, n_sig):
     tracks_list, jets_list = [], []
     for number, patterns in enumerate(groups, start=1):
         print(f"Leyendo fondo {number}: {' '.join(patterns)}")
@@ -123,11 +130,22 @@ def read_backgrounds(groups, balance, rng):
         jets_list.append(jets)
 
     counts = [len(t) for t in tracks_list]
+    counts_read = list(counts)                   # antes de balancear (para el resumen)
     print("  eventos por proceso de fondo:", counts)
 
-    if balance and len(groups) > 1:
+    n_sig_keep = n_sig                           # sin balance se usa toda la señal
+    if balance:
+        n_proc = len(groups)
         n_keep = min(counts)
-        print(f"  balanceando: se toman {n_keep:,} eventos de cada proceso")
+        if n_proc * n_keep > n_sig:              # no alcanza la señal
+            n_keep = n_sig // n_proc
+            print(f"  AVISO: hay {n_sig:,} eventos de señal, no alcanzan para {n_proc} x {min(counts):,}.")
+            print(f"         Se baja a {n_keep:,} eventos por proceso de fondo.")
+        if n_keep == 0:
+            raise ValueError("Balanceando quedan 0 eventos por proceso; revisá las entradas o usá --no-balance")
+        n_sig_keep = n_proc * n_keep
+        print(f"  balanceando: {n_keep:,} eventos de cada fondo y {n_sig_keep:,} de señal "
+              f"({n_proc} x {n_keep:,})")
         for k in range(len(tracks_list)):
             chosen = np.sort(rng.permutation(counts[k])[:n_keep])  # eventos elegidos al azar
             tracks_list[k] = tracks_list[k][chosen]
@@ -138,7 +156,7 @@ def read_backgrounds(groups, balance, rng):
     tracks = np.concatenate(tracks_list)
     jets = np.concatenate(jets_list)
     process = np.concatenate(process_list)
-    return tracks, jets, process
+    return tracks, jets, process, counts_read, n_sig_keep
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +258,58 @@ def make_class_dict(labels_train):
 
 
 # ---------------------------------------------------------------------------
+# PASO 9: resumen de la separación (split_summary.yaml en la carpeta de salida)
+#   - eventos leídos y usados de cada proceso
+#   - fracciones de train / val / test
+#   - cuántos eventos de cada proceso quedaron en cada archivo
+# ---------------------------------------------------------------------------
+def write_summary(path, args, n_sig_read, n_sig, bkg_counts_read, process_bkg, sig_idx, bkg_idx):
+    frac_test = 1 - args.frac_train - args.frac_val
+    summary = {
+        "seed": args.seed,
+        "balance_fondos": not args.no_balance,
+        "fracciones": {
+            "train": args.frac_train,
+            "val": args.frac_val,
+            "test": round(frac_test, 10),
+        },
+        "procesos": {},
+        "totales": {},
+    }
+
+    # señal (proceso 0)
+    summary["procesos"]["0_senal"] = {
+        "rutas": list(args.signal),
+        "eventos_leidos": int(n_sig_read),
+        "eventos_usados": int(n_sig),
+        "train": int(len(sig_idx["train"])),
+        "val": int(len(sig_idx["val"])),
+        "test": int(len(sig_idx["test"])),
+    }
+
+    # cada fondo (procesos 1, 2, 3, ...)
+    for number, patterns in enumerate(args.background, start=1):
+        entry = {
+            "rutas": list(patterns),
+            "eventos_leidos": int(bkg_counts_read[number - 1]),
+            "eventos_usados": int(np.sum(process_bkg == number)),
+        }
+        for split in ("train", "val", "test"):
+            entry[split] = int(np.sum(process_bkg[bkg_idx[split]] == number))
+        summary["procesos"][f"{number}_fondo"] = entry
+
+    # totales por archivo
+    for split in ("train", "val", "test"):
+        n_s = int(len(sig_idx[split]))
+        n_b = int(len(bkg_idx[split]))
+        summary["totales"][split] = {"senal": n_s, "fondo": n_b, "total": n_s + n_b}
+
+    with open(path, "w") as f:
+        yaml.safe_dump(summary, f, sort_keys=False, allow_unicode=True)
+    print(f"  escrito {path}")
+
+
+# ---------------------------------------------------------------------------
 # PROGRAMA PRINCIPAL
 # ---------------------------------------------------------------------------
 def main():
@@ -254,7 +324,7 @@ def main():
     )
     parser.add_argument(
         "--no-balance", action="store_true",
-        help="no igualar la cantidad de eventos entre procesos de fondo (usa todos)",
+        help="no balancear: usa todos los eventos de señal y de cada fondo",
     )
     parser.add_argument("--outdir", required=True)
     parser.add_argument("--frac-train", type=float, default=0.8)
@@ -272,7 +342,16 @@ def main():
     # PASO 1
     print(f"Leyendo señal: {' '.join(args.signal)}")
     tracks_sig, jets_sig = read_process(args.signal)
-    tracks_bkg, jets_bkg, process_bkg = read_backgrounds(args.background, not args.no_balance, rng)
+    n_sig_read = len(tracks_sig)
+    tracks_bkg, jets_bkg, process_bkg, bkg_counts_read, n_sig_keep = read_backgrounds(
+        args.background, not args.no_balance, rng, n_sig_read
+    )
+
+    # PASO 1c: con balance, la señal se reduce a (cantidad de fondos) x n_keep eventos
+    if n_sig_keep < n_sig_read:
+        chosen = np.sort(rng.permutation(n_sig_read)[:n_sig_keep])  # eventos elegidos al azar
+        tracks_sig = tracks_sig[chosen]
+        jets_sig = jets_sig[chosen]
     process_sig = np.zeros(len(tracks_sig), dtype="i4")  # proceso 0 = señal
 
     # señal y fondo tienen que tener los mismos campos de tracks
@@ -323,6 +402,13 @@ def main():
         yaml.safe_dump(make_norm_dict(tracks_train), f, sort_keys=False)
     with open(outdir / "class_dict.yaml", "w") as f:
         yaml.safe_dump(make_class_dict(labels_train), f)
+
+    # PASO 9
+    write_summary(
+        outdir / "split_summary.yaml", args, n_sig_read, len(tracks_sig), bkg_counts_read, process_bkg,
+        {"train": sig_train, "val": sig_val, "test": sig_test},
+        {"train": bkg_train, "val": bkg_val, "test": bkg_test},
+    )
 
     # Resumen
     print("\nEventos       señal      fondo")
