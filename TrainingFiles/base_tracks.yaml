@@ -40,11 +40,11 @@ trainer:
 
 
 data:
-  train_file: /mnt/R5/gbarco/TrainingV03_HadAndLepBGs/pp_output_train.h5
-  val_file:   /mnt/R5/gbarco/TrainingV03_HadAndLepBGs/pp_output_val.h5
-  test_file:  /mnt/R5/gbarco/TrainingV03_HadAndLepBGs/pp_output_test.h5
-  class_dict: /mnt/R5/gbarco/TrainingV03_HadAndLepBGs/class_dict.yaml
-  norm_dict:  /mnt/R5/gbarco/TrainingV03_HadAndLepBGs/norm_dict.yaml
+  train_file: /mnt/R5/gbarco/TrainingV04-KGC_Balaced/pp_output_train.h5
+  val_file:   /mnt/R5/gbarco/TrainingV04-KGC_Balaced/pp_output_val.h5
+  test_file:  /mnt/R5/gbarco/TrainingV04-KGC_Balaced/pp_output_test.h5
+  class_dict: /mnt/R5/gbarco/TrainingV04-KGC_Balaced/class_dict.yaml
+  norm_dict:  /mnt/R5/gbarco/TrainingV04-KGC_Balaced/norm_dict.yaml
   batch_size: 10000 #3500
   num_workers: 12
   num_train: -1
