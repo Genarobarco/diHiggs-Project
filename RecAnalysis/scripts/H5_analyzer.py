@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 from matplotlib.ticker import MultipleLocator, FuncFormatter
 from matplotlib.colors import LogNorm
-import Functions as f
+import Functions_OG as f
 
 vec.register_awkward()
 
@@ -34,8 +34,8 @@ BenchMark = "BM500"
 process = "gg-hhj"
 
 # --- Archivos de test (entrada de salt test) y salidas del clasificador (salida de salt test)
-TEST_DIR = Path("/mnt/R5/gbarco/TrainingV03_HadAndLepBGs/")
-CKPT_DIR = Path("/home/gbarco/DiHiggsProject/OutTrainings/GN2Tracks_KGC_Had/ckpts/")
+TEST_DIR = Path("/mnt/R5/gbarco/TrainingV04-KGC_Balaced/")
+CKPT_DIR = Path("/home/gbarco/DiHiggsProject/OutTrainings/GN2Tracks_KG_HadLep-Balanced_20261126-T181353/ckpts/")
 N_EPOCH = "049"
 
 # --- Corte en el clasificador: D = log(p_tau / p_qcd)
