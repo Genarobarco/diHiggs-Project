@@ -12,13 +12,12 @@ from matplotlib.colors import LogNorm
 
 vec.register_awkward()
 
-common_path_of_data = "/home/usuario/Madgraph/projects/"
-saving_path = '/home/usuario/VSCode/diHiggs-Project/RecAnalysis/Truth/'
+saving_path = '/home/gbarco/DiHiggsProject/RecAnalysis'
 
 os.makedirs(saving_path, exist_ok=True)
 
 rutas = {
-    'signal': "/home/usuario/Madgraph/projects/BM500_gg-hhj_1800k_reduced/output_ggHH_bbtata_BP1_81_0_delphes_events.root",
+    'signal': "/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_0_delphes_events.root",
 #    'bkg': "/home/usuario/Madgraph/projects/pp_tthj-1800k_reduced/output_pp_tthj_h-tata_1800k_104_0_delphes_events.root",
 }
 
