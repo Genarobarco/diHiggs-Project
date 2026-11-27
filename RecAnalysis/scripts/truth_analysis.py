@@ -19,8 +19,10 @@ carpeta_truth = f'{saving_path}/Truth'
 os.makedirs(carpeta_truth, exist_ok=True)
 
 rutas = {
-    'signal': "/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_0_delphes_events.root",
-#    'bkg': "/home/usuario/Madgraph/projects/pp_tthj-1800k_reduced/output_pp_tthj_h-tata_1800k_104_0_delphes_events.root",
+    'signal': "/mnt/R5/gbarco/BM500_gghhj_1800k/ROOTs/output_ggHH_bbtata_BP1_81_*_delphes_events.root",
+    'lep': "/mnt/R5/gbarco/pp_tthj_1800k/ROOTs/output_pp_tthj_h-tata_1800k_104_*_delphes_events.root",
+    'had': '/mnt/R5/gbarco/pp_tthj-had/ROOTs/output_pp_tthj_had_119_*_delphes_events.root',
+    'semiA': '/mnt/R5/gbarco/pp_tthj-semilep_A/ROOTs/output_pp_tthj_semilep_A_126_*_delphes_events.root' 
 }
 
 truth_keys = ["Particle.PID", "Particle.Status", "Particle.D1", "Particle.D2", "Particle.M1", "Particle.M2",
